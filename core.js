@@ -282,3 +282,35 @@ export function worldToScreen(worldX, room = DEFAULT_ROOM) {
   return room.nx - worldX;
 }
 
+
+export const ISO_COS=Math.cos(Math.PI/6),ISO_SIN=Math.sin(Math.PI/6);
+
+export function isoRotate(x,y,turns,room){
+  // Rotate a floor point by turns*90 degrees around the room centre.
+  const t=((Math.round(turns)%4)+4)%4,cx=room.nx/2,cy=room.ny/2,dx=x-cx,dy=y-cy;
+  const pairs=[[dx,dy],[-dy,dx],[-dx,-dy],[dy,-dx]][t];
+  return {x:cx+pairs[0],y:cy+pairs[1]};
+}
+
+export function isoProject(x,y,z,turns,room){
+  // Screen projection of a 3D point. Screen X mirrors the plan view; +z draws upward.
+  const r=isoRotate(x,y,turns,room),mx=room.nx-r.x,my=r.y;
+  return {sx:(mx-my)*ISO_COS,sy:(mx+my)*ISO_SIN-(z||0),depth:mx+my};
+}
+
+export function isoBoxFaces(rect,height,base,turns,room){
+  // Top/left/right faces of an axis-aligned box, ordered back-to-front by depth.
+  const z0=base||0,z1=z0+height;
+  const corners=[[rect.x0,rect.y0],[rect.x1,rect.y0],[rect.x1,rect.y1],[rect.x0,rect.y1]];
+  const top=corners.map(([px,py])=>isoProject(px,py,z1,turns,room));
+  const bottom=corners.map(([px,py])=>isoProject(px,py,z0,turns,room));
+  const sides=[];
+  for(let i=0;i<4;i++){
+    const j=(i+1)%4,points=[bottom[i],bottom[j],top[j],top[i]];
+    sides.push({points,depth:(bottom[i].depth+bottom[j].depth)/2});
+  }
+  sides.sort((a,b)=>a.depth-b.depth);
+  const visible=sides.slice(2);
+  return {top:{points:top,depth:Math.max(...top.map(p=>p.depth))},sides:visible,
+    depth:Math.max(...bottom.map(p=>p.depth))};
+}
