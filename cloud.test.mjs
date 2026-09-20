@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
 let mod={};try{mod=await import('./cloud.mjs')}catch(e){if(e.code!=='ERR_MODULE_NOT_FOUND')throw e}
-test('save publishes UTF-8 concept and verifies exact remote readback',async()=>{assert.equal(typeof mod.GitHubConcepts,'function','cloud client missing');let stored,calls=[];const api=async(url,opt={})=>{calls.push([url,opt]);if(opt.method==='PUT'){stored=JSON.parse(opt.body);return new Response(JSON.stringify({content:{sha:'abc'}}),{status:201})}return new Response(JSON.stringify({content:stored.content,encoding:'base64'}),{status:200})};const c=new mod.GitHubConcepts({fetch:api});c.connect('test-only-not-a-real-credential');const doc={name:'Мій концепт',layout:{x:42}};await c.save('мій-план-123.json',doc);assert.equal(calls.length,2);assert.match(calls[0][0],/^https:\/\/api.github.com\/repos\/vossapov\/room-planner\/contents\/concepts\//);assert.deepEqual(JSON.parse(Buffer.from(stored.content,'base64').toString()),doc);assert.equal(stored.branch,'main');assert.equal(calls[0][1].headers.Authorization,'Bearer test-only-not-a-real-credential')});
+test('save publishes UTF-8 concept and verifies exact remote readback',async()=>{assert.equal(typeof mod.GitHubConcepts,'function','cloud client missing');let stored,calls=[];const api=async(url,opt={})=>{calls.push([url,opt]);if(opt.method==='PUT'){stored=JSON.parse(opt.body);return new Response(JSON.stringify({content:{sha:'abc'}}),{status:201})}return new Response(JSON.stringify({content:stored.content,encoding:'base64'}),{status:200})};const c=new mod.GitHubConcepts({fetch:api});c.connect('test-only-not-a-real-credential');const doc={name:'Мій концепт',layout:{x:42}};await c.save('мій-план-123.json',doc);assert.ok(calls.length>=2,'save must write then verify');assert.equal(calls.filter(c=>c[1].method==='PUT'&&!c[0].includes('index.json')).length,1,'exactly one concept write');assert.match(calls[0][0],/^https:\/\/api.github.com\/repos\/vossapov\/room-planner\/contents\/concepts\//);assert.deepEqual(JSON.parse(Buffer.from(stored.content,'base64').toString()),doc);assert.equal(stored.branch,'main');assert.equal(calls[0][1].headers.Authorization,'Bearer test-only-not-a-real-credential')});
 
 test('writes require explicit connection and token cannot be serialized',async()=>{let calls=0;const c=new mod.GitHubConcepts({fetch:async()=>{calls++;return new Response('{}')}});await assert.rejects(()=>c.save('plan.json',{}),/Підключи/);assert.equal(calls,0);c.connect('test-private');assert.equal(c.connected,true);assert.ok(!JSON.stringify(c).includes('test-private'));c.disconnect();assert.equal(c.connected,false)});
 
@@ -19,3 +19,21 @@ test('public reads use the CDN, so browsing is not capped by the 60/hour API lim
  assert.ok(urls.some(u=>u.startsWith('https://raw.githubusercontent.com/vossapov/room-planner/main/concepts/a.json')),'concept body must come from raw.githubusercontent.com, got '+JSON.stringify(urls));
  c.connect('test-key');urls.length=0;await c.load('a.json');
  assert.ok(urls.every(u=>!u.startsWith('https://raw')),'an authenticated reader must use the API for fresh data');});
+
+test('anonymous listing prefers the published index so browsing never hits the API limit',async()=>{const urls=[];
+ const c=new mod.GitHubConcepts({fetch:async(u)=>{urls.push(u);if(u.includes('index.json'))return new Response('["b.json","a.json"]');return new Response('[]')}});
+ const rows=await c.list();
+ assert.deepEqual(rows.map(r=>r.name),['a.json','b.json']);
+ assert.ok(urls.every(u=>!u.includes('api.github.com')),'anonymous list must not call the API: '+JSON.stringify(urls));});
+
+test('saving refreshes the published index so other devices see the new concept',async()=>{const puts={};let listing=[{name:'a.json',type:'file'}];
+ const c=new mod.GitHubConcepts({fetch:async(u,opt={})=>{
+  if(opt.method==='PUT'){const body=JSON.parse(opt.body);const name=decodeURIComponent(u.split('/').pop());puts[name]=JSON.parse(Buffer.from(body.content,'base64').toString());if(name!=='index.json')listing.push({name,type:'file'});return new Response('{}',{status:201})}
+  if(u.includes('index.json'))return new Response(JSON.stringify({sha:'idx',content:Buffer.from('["a.json"]').toString('base64'),encoding:'base64'}));
+  if(u.endsWith('concepts?ref=main'))return new Response(JSON.stringify(listing));
+  const name=decodeURIComponent(u.split('?')[0].split('/').pop());
+  return new Response(JSON.stringify({content:Buffer.from(JSON.stringify(puts[name])).toString('base64'),encoding:'base64'}))}});
+ c.connect('test-key');
+ await c.save('new-plan.json',{name:'Новий'});
+ assert.ok(puts['index.json'],'index.json must be rewritten on save');
+ assert.deepEqual(puts['index.json'].sort(),['a.json','new-plan.json']);});
