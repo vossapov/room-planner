@@ -364,6 +364,34 @@ function isoWallPanels(wall,openings){
   if(cursor<wall.to)panels.push({from:cursor,to:wall.to,z0:0,z1:wall.height});
   return panels.filter(p=>p.to>p.from&&p.z1>p.z0);
 }
+
+// Fixed shell of THIS room. The balcony passage (X=2820..3700) belongs to the old
+// room beyond the partition and is deliberately absent. The former window niche is
+// boarded up: a recess in the balcony wall, not a hole.
+const ROOM_SHELL={
+  wall:60,ceiling:2500,
+  openings:{left:[{from:2710,to:3060,z0:900,z1:2100,kind:'window'}],top:[],bottom:[],right:[]},
+  recesses:[{side:'top',from:1340,to:2720,z0:850,z1:2150,depth:40,kind:'niche'}]};
+
+function isoOpeningReveal(op,wall,turns,room){
+  // Back plane and jambs so an opening reads as depth instead of a black hole.
+  const out=[],deep=wall*0.9;
+  const rect=(a,b)=>op.side==='right'?{x0:room.nx-a,y0:op.from,x1:room.nx-b,y1:op.to}
+    :op.side==='left'?{x0:a,y0:op.from,x1:b,y1:op.to}
+    :op.side==='top'?{x0:op.from,y0:a,x1:op.to,y1:b}:{x0:op.from,y0:room.ny-a,x1:op.to,y1:room.ny-b};
+  const plane=(r,z0,z1)=>{const along=(op.side==='left'||op.side==='right')?[[r.x0,r.y0],[r.x0,r.y1]]:[[r.x0,r.y0],[r.x1,r.y0]];
+    const lo=along.map(([x,y])=>isoProject(x,y,z0,turns,room)),hi=along.map(([x,y])=>isoProject(x,y,z1,turns,room));
+    return {points:[lo[0],lo[1],hi[1],hi[0]],depth:(lo[0].depth+lo[1].depth)/2}};
+  // The portal plane fills the hole so the page background never shows through.
+  const back=rect(deep,deep+1);
+  out.push(plane(back,op.z0,op.z1));
+  out.push(plane(rect(0,1),op.z0,op.z1));
+  const near=rect(0,deep);
+  const sill={x0:near.x0,y0:near.y0,x1:near.x1,y1:near.y1};
+  out.push({points:isoBoxFaces(sill,0,op.z0,turns,room).top.points,depth:0});
+  out.push({points:isoBoxFaces(sill,0,op.z1,turns,room).top.points,depth:0});
+  return out;
+}
 </script><script>const PRESETS={"variant-01": {"id": "V1", "family_key": "+X", "family_ua": "ноги до перегородки (+X)", "concept": "Узголів’я впритул до вуличної стіни, довга сторона до глухої; тумба збоку біля голови.", "bed": {"name": "Ліжко 1400x2000", "x0": 0, "y0": 1720, "x1": 2000, "y1": 3120, "head_end": "x0", "head_wall_ua": "узголів'я до вуличної стіни X=0", "dims_mm": [2000, 1400], "long_side_used": "-Y"}, "desk": {"name": "Стіл 900x600", "x0": 2120.0, "y0": 0.0, "x1": 2720.0, "y1": 900.0, "work_side": "-X", "chair_offset_mm": 0.0, "work_edge_mm": 900, "work_edge": [2120.0, 0.0, 2120.0, 900.0]}, "chair_work": {"name": "Крісло (робоче)", "x0": 1470.0, "y0": 0.0, "x1": 2120.0, "y1": 650.0}, "chair_pulled": {"name": "Крісло (відсунуте)", "x0": 920.0, "y0": 0.0, "x1": 1570.0, "y1": 650.0}, "chair_swept": {"name": "Слід руху крісла", "x0": 920.0, "y0": 0.0, "x1": 2120.0, "y1": 650.0}, "chair_pull_mm": 550, "storage": {"name": "Тумба 400x400", "x0": 0, "y0": 1320, "x1": 400, "y1": 1720}, "tv": {"name": "ТВ 1200", "x0": 2660.0, "y0": 1820.0, "x1": 2720.0, "y1": 3020.0, "wall": "partition", "wall_ua": "перегородка X=2720", "segment_mm": 1200, "bottom_mm": 1100, "depth_mm": 60, "view_direction": "+X", "niche_plane_overlap_mm": 0.0}, "door": {"d_mm": 900.0, "swing": "OutLeft", "swing_ua": "у стару кімнату, петлі з боку балкона", "rough": {"name": "Чорновий проріз 900", "x0": 2720.0, "y0": 900.0, "x1": 2820.0, "y1": 1800.0}, "rough_height_mm": 2100, "clear_portal": {"name": "Чистий портал 750", "x0": 2720.0, "y0": 975.0, "x1": 2820.0, "y1": 1725.0}, "hinge_mm": [2820, 950.0], "leaf_open": {"name": "", "x0": 2820.0, "y0": 950.0, "x1": 3620.0, "y1": 990.0}, "leaf_closed": {"name": "", "x0": 2780.0, "y0": 950.0, "x1": 2820.0, "y1": 1750.0}, "swing_zone": {"name": "", "x0": 2780.0, "y0": 950.0, "x1": 3620.999375780031, "y1": 1750.9993757800314}, "return_balcony_mm": 900.0, "return_blind_mm": 1320.0}, "landing_zone": {"name": "Зона посадки", "x0": 500.0, "y0": 1220.0, "x1": 1500.0, "y1": 1720.0, "side": "-Y"}, "route": {"start_mm": [3070.0, 1350.0], "goal_mm": [1000.0, 1470], "polyline_mm": [[3070.0, 1350.0], [1000.0, 1350.0], [1000.0, 1470]], "swept_rects": [[750.0, 1100.0, 3320.0, 1600.0], [750.0, 1100.0, 1250.0, 1720.0]], "length_mm": 2190.0, "turns": 1, "guaranteed_width_mm": 500, "width_status_ua": "перевірено >=500 мм", "grid_step_mm": 10, "note": "Безперервний маршрут доведено квадратом людини 500x500. Максимальну ширину більшого swept-квадрата не обчислювали; локальні поперечні зазори не видаються за ширину всього маршруту."}, "chair_route": {"edge": "бік", "goal_mm": [1240, 900.0], "polyline_mm": [[3070.0, 1350.0], [1240.0, 1350.0], [1240.0, 900.0]], "shared_edge_mm": 500.0}, "clearances_mm": {"bed": 970.0, "desk": 1870.0, "storage": 570.0, "tv": 2636.8541863364385, "chair_work": 1220.0, "chair_pulled": 670.0, "chair_swept": 670.0}, "relaxations": ["window_corner", "bed_long_side_contact"], "convector_project_buffer_mm": 300, "window_access_required": false, "status_note": "Одна поточна рекомендована схема, не доказ глобального оптимуму. Дверний блок і паспорт конвектора потребують уточнення."}, "concept-02": {"id": "concept-02-reworked", "status": "candidate_not_yet_approved", "family_key": "-Y", "family_ua": "ноги до балконної стіни (-Y)", "concept": "Нова орієнтація: узголів’я до глухої стіни, тумба збоку біля голови, ТВ у площині ніші навпроти ніг, вхід угорі перегородки, стіл 900x500 у віконному куті.", "bed": {"name": "Ліжко 1400x2000", "x0": 1300.0, "y0": 1120.0, "x1": 2700.0, "y1": 3120.0, "head_end": "y1", "head_wall_ua": "узголів'я до глухої стіни Y=3120", "dims_mm": [1400, 2000], "long_side_used": "-X"}, "desk": {"name": "Стіл 900x500 - погоджено користувачем", "x0": 0.0, "y0": 2620.0, "x1": 900.0, "y1": 3120.0, "work_side": "-Y", "chair_offset_mm": 0, "work_edge_mm": 900, "work_edge": [0, 2620, 900, 2620]}, "storage": {"name": "Тумба 400x400", "x0": 900.0, "y0": 2720.0, "x1": 1300.0, "y1": 3120.0}, "tv": {"name": "ТВ 1200", "x0": 1400.0, "y0": 0.0, "x1": 2600.0, "y1": 60.0, "wall": "balcony", "wall_ua": "балконна стіна Y=0", "segment_mm": 1200, "bottom_mm": 1100, "depth_mm": 60, "view_direction": "-Y", "niche_plane_overlap_mm": 1200}, "chair_work": {"name": "Крісло (робоче)", "x0": 0.0, "y0": 1970.0, "x1": 650.0, "y1": 2620.0}, "chair_pulled": {"name": "Крісло (відсунуте)", "x0": 0.0, "y0": 1420.0, "x1": 650.0, "y1": 2070.0}, "chair_swept": {"name": "Слід руху крісла", "x0": 0.0, "y0": 1420.0, "x1": 650.0, "y1": 2620.0}, "chair_pull_mm": 550, "door": {"d_mm": 250, "swing": "InLeft", "swing_ua": "у спальню, петлі з боку балкона", "rough": {"name": "", "x0": 2720.0, "y0": 250.0, "x1": 2820.0, "y1": 1150.0}, "rough_height_mm": 2100, "clear_portal": {"name": "", "x0": 2720.0, "y0": 325.0, "x1": 2820.0, "y1": 1075.0}, "hinge_mm": [2720, 300], "leaf_closed": {"name": "", "x0": 2720.0, "y0": 300.0, "x1": 2760.0, "y1": 1100.0}, "leaf_open": {"name": "", "x0": 1920.0, "y0": 300.0, "x1": 2720.0, "y1": 340.0}, "swing_zone": {"name": "", "x0": 1919.0006242199686, "y0": 300.0, "x1": 2760.0, "y1": 1100.9993757800314}, "return_balcony_mm": 250, "return_blind_mm": 1970}, "landing_zone": {"name": "Зона посадки", "x0": 800.0, "y0": 1620.0, "x1": 1300.0, "y1": 2620.0, "side": "-X"}, "window_access_required": false, "convector_project_buffer_mm": 300, "route": {"start_mm": [3070.0, 700], "goal_mm": [1050.0, 2120.0], "polyline_mm": [[3070.0, 700], [1050.0, 700], [1050.0, 2120.0]], "swept_rects": [[800.0, 450.0, 3320.0, 950.0], [800.0, 450.0, 1300.0, 2370.0]], "length_mm": 3440.0, "guaranteed_width_mm": 500}, "chair_route": {"goal_mm": [900.0, 1745.0], "polyline_mm": [[3070.0, 700], [1050.0, 700], [1050.0, 1745.0], [900.0, 1745.0]], "edge": "бік відсунутого крісла", "shared_edge_mm": 500}, "headboard_niche_plane_overlap_mm": 0, "user_approved_change": "Стіл 90×50 см - зберегти ширину й повну зону вставання; відповідь у формі уточнення.", "assumptions": ["Кріплення ТВ у площині ніші потребує перевірки суцільної основи.", "Віддалення ліжка від конвектора не є тепловим розрахунком або гарантією комфорту.", "Газовий паспорт і фактичний дверний блок невідомі.", "Дверна дуга має малий геометричний запас перед торцем ліжка; потрібна звірка реального блока.", "Існуючий коридорний прохід 600 мм: розбірні меблі; занесення матраца перевірити."], "clearances_mm": {"bed": 1113.2834320154054, "desk": 1870.0, "storage": 2074.463786138481, "tv": 1150.0, "chair_work": 1220.0, "chair_pulled": 670.0, "chair_swept": 670.0}, "door_swing_bbox_bed_gap_mm": 19.000624219968586, "status_note": "Новий концепт 2, не старий варіант 2. Стіл 90x50 погоджено; сам концепт ще не схвалено."}};</script><script>'use strict';
 const NX=2720,NY=3120,KEY='remont.constructor.v1',NS='http://www.w3.org/2000/svg';
 const $=id=>document.getElementById(id),copy=x=>JSON.parse(JSON.stringify(x));
@@ -396,9 +424,8 @@ const d=l.door,h=d.hinge_mm,o=d.leaf_open,c=d.leaf_closed,top=d.swing.endsWith('
 out+=`<g data-item="door" tabindex="0" aria-label="Двері">${svgRect(d.rough,'transparent','transparent','stroke-width="15"')}${line(NX-start.x,start.y,NX-h[0],h[1],'#97a1a5',5,'stroke-dasharray="20 15"')}<path d="M${NX-start.x} ${start.y} A800 800 0 0 ${flag} ${NX-end.x} ${end.y}" fill="none" stroke="${state.selected==='door'?'#9064bd':'#83939f'}" stroke-width="8"/>${svgRect(o,'#778696',report.bad.includes('door')?'#bd5d59':'#52697a','stroke-width="7"')}<circle cx="${NX-h[0]}" cy="${h[1]}" r="20" fill="#586c7d"/></g>`;svg.innerHTML=out;$('zoomLabel').textContent=Math.round(state.zoom*100)+'%'}
 
 const ROOM={nx:NX,ny:NY},WALL=2500,WALL_T=60;
-const ISO_FILL={bed:['#e7d3ae','#cbb188','#ad9670'],desk:['#bfd5df','#9db6c2','#83a0ae'],storage:['#d8ccb8','#b8ab96','#9c8f7c'],tv:['#2f3a45','#222b34','#1a2129'],door:['#93a0ac','#74828f','#5f6c78'],conv:['#dfa98d','#c28e74','#a87a62'],headboard:['#f6ecd8','#d8c9a9','#bdae90']};
-// Balcony passage and small window are fixed shell openings; the door moves with d_mm.
-const OPENINGS={right:[{from:0,to:880,z0:0,z1:2100,kind:'balcony'}],left:[{from:2710,to:3060,z0:900,z1:2100,kind:'window'}]};
+const ISO_FILL={bed:['#e7d3ae','#cbb188','#ad9670'],desk:['#bfd5df','#9db6c2','#83a0ae'],storage:['#d8ccb8','#b8ab96','#9c8f7c'],tv:['#3e4a57','#5b6773','#4c5762'],door:['#93a0ac','#74828f','#5f6c78'],conv:['#dfa98d','#c28e74','#a87a62'],headboard:['#f6ecd8','#d8c9a9','#bdae90']};
+// Shell openings come from the validated model; the door is the only moving one.
 let isoBounds=null;
 function isoTrack(pts){for(const p of pts){if(!isoBounds)isoBounds={minX:p.sx,maxX:p.sx,minY:p.sy,maxY:p.sy};else{isoBounds.minX=Math.min(isoBounds.minX,p.sx);isoBounds.maxX=Math.max(isoBounds.maxX,p.sx);isoBounds.minY=Math.min(isoBounds.minY,p.sy);isoBounds.maxY=Math.max(isoBounds.maxY,p.sy)}}}
 function isoPoly(points,fill,extra=''){isoTrack(points);return`<polygon points="${points.map(p=>p.sx.toFixed(1)+','+p.sy.toFixed(1)).join(' ')}" fill="${fill}" stroke="#15161a" stroke-width="6" stroke-linejoin="round" ${extra}/>`}
@@ -411,12 +438,17 @@ function drawWall(side,turns,openings){const span=wallSpan(side);let out='';
 function wallDepth(side,turns){const r=isoRotateRect(wallRect(side,...Object.values(wallSpan(side))),turns,ROOM);return (NX-r.x0)+r.y1}
 function renderIso(){const svg=$('iso');if(!svg)return;const l=state.layout,turns=state.isoTurn|0;isoBounds=null;
  const doorHole=[{from:l.door.d_mm,to:l.door.d_mm+900,z0:0,z1:2100,kind:'door'}];
- const sides=[{side:'top',op:OPENINGS.top},{side:'left',op:OPENINGS.left},{side:'bottom',op:[]},{side:'right',op:OPENINGS.right.concat(doorHole)}]
+ const sides=[{side:'top',op:ROOM_SHELL.openings.top},{side:'left',op:ROOM_SHELL.openings.left},{side:'bottom',op:ROOM_SHELL.openings.bottom},{side:'right',op:doorHole}]
    .map(w=>({...w,depth:wallDepth(w.side,turns)})).sort((a,b)=>a.depth-b.depth);
  let out=isoPoly(isoBoxFaces({x0:0,y0:0,x1:NX,y1:NY},0,0,turns,ROOM).top.points,'#e9e8e3','stroke="#2a2c32" stroke-width="8"');
  for(const w of sides.slice(0,2))out+=`<g data-wall="${w.side}">${drawWall(w.side,turns,w.op)}</g>`;
- for(const g of [{r:{x0:NX-WALL_T,y0:0,x1:NX,y1:880},f:'#79818c',t:'balcony'},{r:{x0:0,y0:2710,x1:WALL_T,y1:3060},f:'#8fbdd4',t:'window'},{r:{x0:NX-WALL_T,y0:l.door.d_mm,x1:NX,y1:Math.min(NY,l.door.d_mm+900)},f:'#646c76',t:'doorway'}])
-  out+=isoPoly(isoBoxFaces(g.r,0,12,turns,ROOM).top.points,g.f,`data-opening="${g.t}"`);
+  const drawn=sides.slice(0,2).map(w=>w.side);
+ // Recesses are shallow pockets in a wall: show them only while that wall is on screen.
+ for(const rc of ROOM_SHELL.recesses)if(drawn.includes(rc.side))
+  out+=isoSolid(wallRect(rc.side,rc.from,rc.to),rc.z1-rc.z0,rc.z0,['#aeb2bb','#9da1aa','#8d919a'],turns,false,'niche').replace(/data-solid="niche"/g,'data-recess="niche"');
+ const shellOps=[{side:'left',...(ROOM_SHELL.openings.left[0]||{}),t:'window',f:['#cfe6f1','#b4d3e2','#9dc2d4']},{side:'right',from:l.door.d_mm,to:l.door.d_mm+900,z0:0,z1:2100,t:'doorway',f:'#9aa2ac'}];
+ for(const g of shellOps){if(!drawn.includes(g.side)||!g.from&&g.from!==0)continue;
+  for(const face of isoOpeningReveal(g,WALL_T,turns,ROOM))out+=isoPoly(face.points,g.f,`data-opening="${g.t}"`)}
  // A wall-mounted item keeps a backing strip even when its wall is culled, so it never floats.
  const tvWall=l.tv.y1<=NY/2?'top':l.tv.y0>=NY/2?'bottom':l.tv.x1<=NX/2?'left':'right';
  const tvBack=tvWall==='top'?{x0:l.tv.x0-120,y0:0,x1:l.tv.x1+120,y1:WALL_T}:tvWall==='bottom'?{x0:l.tv.x0-120,y0:NY-WALL_T,x1:l.tv.x1+120,y1:NY}:tvWall==='left'?{x0:0,y0:l.tv.y0-120,x1:WALL_T,y1:l.tv.y1+120}:{x0:NX-WALL_T,y0:l.tv.y0-120,x1:NX,y1:l.tv.y1+120};

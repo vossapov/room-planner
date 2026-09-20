@@ -93,3 +93,51 @@ test('built page renders wall openings and marks assumed heights',()=>{
  assert.ok(html.includes('isoWallPanels')&&html.includes('isoDepthSort'),'fixed geometry must be embedded');
  assert.ok(/припущен/i.test(html),'assumed opening heights must be disclosed to the user');
 });
+
+test('the shell only has openings that exist inside this room',()=>{
+ assert.ok(mod.ROOM_SHELL,'ROOM_SHELL missing');
+ const {nx,ny}=room;
+ for(const [side,list] of Object.entries(mod.ROOM_SHELL.openings||{}))
+  for(const o of list){
+   const limit=(side==='top'||side==='bottom')?nx:ny;
+   assert.ok(o.from>=0&&o.to<=limit,`${side} opening ${o.from}..${o.to} leaves the room (limit ${limit})`);
+  }
+ const right=(mod.ROOM_SHELL.openings||{}).right||[];
+ assert.equal(right.length,0,'the balcony passage belongs to the old room, not this partition');
+});
+test('the boarded niche is a recess on the balcony wall, not a hole',()=>{
+ const niche=mod.ROOM_SHELL.recesses.find(r=>r.kind==='niche');
+ assert.ok(niche,'niche recess missing');
+ assert.equal(niche.side,'top','the niche is on the balcony wall Y=0');
+ assert.deepEqual([niche.from,niche.to],[1340,2720],'niche interval must match the validated 1340..2720');
+ assert.ok(niche.depth>0&&niche.depth<mod.ROOM_SHELL.wall,'a recess is shallower than the wall, it does not pierce it');
+});
+test('the small window sits on the street wall where the plan puts it',()=>{
+ const win=(mod.ROOM_SHELL.openings.left||[])[0];
+ assert.ok(win,'window missing from the left wall');
+ assert.deepEqual([win.from,win.to],[2710,3060]);
+});
+
+test('every opening gets a reveal so it reads as a doorway, not a void',()=>{
+ assert.equal(typeof mod.isoOpeningReveal,'function','isoOpeningReveal missing');
+ const faces=mod.isoOpeningReveal({side:'right',from:250,to:1150,z0:0,z1:2100},60,0,room);
+ assert.ok(faces.length>=3,'a reveal needs a back plane plus jambs/head');
+ for(const f of faces)assert.equal(f.points.length,4);
+ const ys=faces.flatMap(f=>f.points.map(p=>p.sy));
+ assert.ok(Math.max(...ys)-Math.min(...ys)>100,'the reveal has real height on screen');
+});
+
+test('the reveal back plane has real width, never a degenerate line',()=>{
+ for(const side of ['left','right','top','bottom']){
+  const faces=mod.isoOpeningReveal({side,from:250,to:1150,z0:0,z1:2100},60,0,room);
+  const xs=faces[0].points.map(p=>p.sx),ys=faces[0].points.map(p=>p.sy);
+  assert.ok(Math.max(...xs)-Math.min(...xs)>50,side+' back plane collapsed horizontally');
+  assert.ok(Math.max(...ys)-Math.min(...ys)>50,side+' back plane collapsed vertically');
+ }});
+
+test('openings are filled surfaces, never see-through voids',()=>{
+ const faces=mod.isoOpeningReveal({side:'right',from:250,to:1150,z0:0,z1:2100},60,0,room);
+ assert.ok(faces.length>=4,'reveal must close the hole on both faces of the wall');
+ const spans=faces.map(f=>{const xs=f.points.map(p=>p.sx),ys=f.points.map(p=>p.sy);return [Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys)]});
+ assert.ok(spans.filter(([w,h])=>w>50&&h>50).length>=2,'at least the near and far planes must be full surfaces');
+});

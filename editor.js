@@ -30,9 +30,8 @@ const d=l.door,h=d.hinge_mm,o=d.leaf_open,c=d.leaf_closed,top=d.swing.endsWith('
 out+=`<g data-item="door" tabindex="0" aria-label="Двері">${svgRect(d.rough,'transparent','transparent','stroke-width="15"')}${line(NX-start.x,start.y,NX-h[0],h[1],'#97a1a5',5,'stroke-dasharray="20 15"')}<path d="M${NX-start.x} ${start.y} A800 800 0 0 ${flag} ${NX-end.x} ${end.y}" fill="none" stroke="${state.selected==='door'?'#9064bd':'#83939f'}" stroke-width="8"/>${svgRect(o,'#778696',report.bad.includes('door')?'#bd5d59':'#52697a','stroke-width="7"')}<circle cx="${NX-h[0]}" cy="${h[1]}" r="20" fill="#586c7d"/></g>`;svg.innerHTML=out;$('zoomLabel').textContent=Math.round(state.zoom*100)+'%'}
 
 const ROOM={nx:NX,ny:NY},WALL=2500,WALL_T=60;
-const ISO_FILL={bed:['#e7d3ae','#cbb188','#ad9670'],desk:['#bfd5df','#9db6c2','#83a0ae'],storage:['#d8ccb8','#b8ab96','#9c8f7c'],tv:['#2f3a45','#222b34','#1a2129'],door:['#93a0ac','#74828f','#5f6c78'],conv:['#dfa98d','#c28e74','#a87a62'],headboard:['#f6ecd8','#d8c9a9','#bdae90']};
-// Balcony passage and small window are fixed shell openings; the door moves with d_mm.
-const OPENINGS={right:[{from:0,to:880,z0:0,z1:2100,kind:'balcony'}],left:[{from:2710,to:3060,z0:900,z1:2100,kind:'window'}]};
+const ISO_FILL={bed:['#e7d3ae','#cbb188','#ad9670'],desk:['#bfd5df','#9db6c2','#83a0ae'],storage:['#d8ccb8','#b8ab96','#9c8f7c'],tv:['#3e4a57','#5b6773','#4c5762'],door:['#93a0ac','#74828f','#5f6c78'],conv:['#dfa98d','#c28e74','#a87a62'],headboard:['#f6ecd8','#d8c9a9','#bdae90']};
+// Shell openings come from the validated model; the door is the only moving one.
 let isoBounds=null;
 function isoTrack(pts){for(const p of pts){if(!isoBounds)isoBounds={minX:p.sx,maxX:p.sx,minY:p.sy,maxY:p.sy};else{isoBounds.minX=Math.min(isoBounds.minX,p.sx);isoBounds.maxX=Math.max(isoBounds.maxX,p.sx);isoBounds.minY=Math.min(isoBounds.minY,p.sy);isoBounds.maxY=Math.max(isoBounds.maxY,p.sy)}}}
 function isoPoly(points,fill,extra=''){isoTrack(points);return`<polygon points="${points.map(p=>p.sx.toFixed(1)+','+p.sy.toFixed(1)).join(' ')}" fill="${fill}" stroke="#15161a" stroke-width="6" stroke-linejoin="round" ${extra}/>`}
@@ -45,12 +44,17 @@ function drawWall(side,turns,openings){const span=wallSpan(side);let out='';
 function wallDepth(side,turns){const r=isoRotateRect(wallRect(side,...Object.values(wallSpan(side))),turns,ROOM);return (NX-r.x0)+r.y1}
 function renderIso(){const svg=$('iso');if(!svg)return;const l=state.layout,turns=state.isoTurn|0;isoBounds=null;
  const doorHole=[{from:l.door.d_mm,to:l.door.d_mm+900,z0:0,z1:2100,kind:'door'}];
- const sides=[{side:'top',op:OPENINGS.top},{side:'left',op:OPENINGS.left},{side:'bottom',op:[]},{side:'right',op:OPENINGS.right.concat(doorHole)}]
+ const sides=[{side:'top',op:ROOM_SHELL.openings.top},{side:'left',op:ROOM_SHELL.openings.left},{side:'bottom',op:ROOM_SHELL.openings.bottom},{side:'right',op:doorHole}]
    .map(w=>({...w,depth:wallDepth(w.side,turns)})).sort((a,b)=>a.depth-b.depth);
  let out=isoPoly(isoBoxFaces({x0:0,y0:0,x1:NX,y1:NY},0,0,turns,ROOM).top.points,'#e9e8e3','stroke="#2a2c32" stroke-width="8"');
  for(const w of sides.slice(0,2))out+=`<g data-wall="${w.side}">${drawWall(w.side,turns,w.op)}</g>`;
- for(const g of [{r:{x0:NX-WALL_T,y0:0,x1:NX,y1:880},f:'#79818c',t:'balcony'},{r:{x0:0,y0:2710,x1:WALL_T,y1:3060},f:'#8fbdd4',t:'window'},{r:{x0:NX-WALL_T,y0:l.door.d_mm,x1:NX,y1:Math.min(NY,l.door.d_mm+900)},f:'#646c76',t:'doorway'}])
-  out+=isoPoly(isoBoxFaces(g.r,0,12,turns,ROOM).top.points,g.f,`data-opening="${g.t}"`);
+  const drawn=sides.slice(0,2).map(w=>w.side);
+ // Recesses are shallow pockets in a wall: show them only while that wall is on screen.
+ for(const rc of ROOM_SHELL.recesses)if(drawn.includes(rc.side))
+  out+=isoSolid(wallRect(rc.side,rc.from,rc.to),rc.z1-rc.z0,rc.z0,['#aeb2bb','#9da1aa','#8d919a'],turns,false,'niche').replace(/data-solid="niche"/g,'data-recess="niche"');
+ const shellOps=[{side:'left',...(ROOM_SHELL.openings.left[0]||{}),t:'window',f:['#cfe6f1','#b4d3e2','#9dc2d4']},{side:'right',from:l.door.d_mm,to:l.door.d_mm+900,z0:0,z1:2100,t:'doorway',f:'#9aa2ac'}];
+ for(const g of shellOps){if(!drawn.includes(g.side)||!g.from&&g.from!==0)continue;
+  for(const face of isoOpeningReveal(g,WALL_T,turns,ROOM))out+=isoPoly(face.points,g.f,`data-opening="${g.t}"`)}
  // A wall-mounted item keeps a backing strip even when its wall is culled, so it never floats.
  const tvWall=l.tv.y1<=NY/2?'top':l.tv.y0>=NY/2?'bottom':l.tv.x1<=NX/2?'left':'right';
  const tvBack=tvWall==='top'?{x0:l.tv.x0-120,y0:0,x1:l.tv.x1+120,y1:WALL_T}:tvWall==='bottom'?{x0:l.tv.x0-120,y0:NY-WALL_T,x1:l.tv.x1+120,y1:NY}:tvWall==='left'?{x0:0,y0:l.tv.y0-120,x1:WALL_T,y1:l.tv.y1+120}:{x0:NX-WALL_T,y0:l.tv.y0-120,x1:NX,y1:l.tv.y1+120};

@@ -362,3 +362,31 @@ export function isoWallPanels(wall,openings){
   if(cursor<wall.to)panels.push({from:cursor,to:wall.to,z0:0,z1:wall.height});
   return panels.filter(p=>p.to>p.from&&p.z1>p.z0);
 }
+
+// Fixed shell of THIS room. The balcony passage (X=2820..3700) belongs to the old
+// room beyond the partition and is deliberately absent. The former window niche is
+// boarded up: a recess in the balcony wall, not a hole.
+export const ROOM_SHELL={
+  wall:60,ceiling:2500,
+  openings:{left:[{from:2710,to:3060,z0:900,z1:2100,kind:'window'}],top:[],bottom:[],right:[]},
+  recesses:[{side:'top',from:1340,to:2720,z0:850,z1:2150,depth:40,kind:'niche'}]};
+
+export function isoOpeningReveal(op,wall,turns,room){
+  // Back plane and jambs so an opening reads as depth instead of a black hole.
+  const out=[],deep=wall*0.9;
+  const rect=(a,b)=>op.side==='right'?{x0:room.nx-a,y0:op.from,x1:room.nx-b,y1:op.to}
+    :op.side==='left'?{x0:a,y0:op.from,x1:b,y1:op.to}
+    :op.side==='top'?{x0:op.from,y0:a,x1:op.to,y1:b}:{x0:op.from,y0:room.ny-a,x1:op.to,y1:room.ny-b};
+  const plane=(r,z0,z1)=>{const along=(op.side==='left'||op.side==='right')?[[r.x0,r.y0],[r.x0,r.y1]]:[[r.x0,r.y0],[r.x1,r.y0]];
+    const lo=along.map(([x,y])=>isoProject(x,y,z0,turns,room)),hi=along.map(([x,y])=>isoProject(x,y,z1,turns,room));
+    return {points:[lo[0],lo[1],hi[1],hi[0]],depth:(lo[0].depth+lo[1].depth)/2}};
+  // The portal plane fills the hole so the page background never shows through.
+  const back=rect(deep,deep+1);
+  out.push(plane(back,op.z0,op.z1));
+  out.push(plane(rect(0,1),op.z0,op.z1));
+  const near=rect(0,deep);
+  const sill={x0:near.x0,y0:near.y0,x1:near.x1,y1:near.y1};
+  out.push({points:isoBoxFaces(sill,0,op.z0,turns,room).top.points,depth:0});
+  out.push({points:isoBoxFaces(sill,0,op.z1,turns,room).top.points,depth:0});
+  return out;
+}
