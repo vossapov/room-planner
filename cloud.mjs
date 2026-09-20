@@ -1,6 +1,6 @@
 export class GitHubConcepts {
  #token='';
- constructor({fetch:fetcher=globalThis.fetch}={}){this.fetch=fetcher;this.base='https://api.github.com/repos/vossapov/room-planner/contents/concepts'}
+ constructor({fetch:fetcher=globalThis.fetch}={}){this.fetch=fetcher.bind(globalThis);this.base='https://api.github.com/repos/vossapov/room-planner/contents/concepts'}
  connect(token){this.#token=String(token).trim()}
  disconnect(){this.#token=''}
  get connected(){return Boolean(this.#token)}
