@@ -1,0 +1,362 @@
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Кімната · Конструктор</title><style>
+:root{color-scheme:dark;--bg:#18191c;--panel:#222327;--line:#37383e;--ink:#ececf0;--muted:#a3a5af;--accent:#bf9aea}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px 'Fixel Text','Segoe UI',sans-serif}button,input,select{font:inherit;color:inherit;border:1px solid var(--line);background:#2b2c32;border-radius:7px;min-height:36px}button{padding:7px 11px;cursor:pointer}button:hover{background:#393a43}button:disabled{opacity:.35;cursor:default}button:focus-visible,input:focus,select:focus{outline:2px solid var(--accent);outline-offset:2px}.primary{background:#c3a1ea;color:#21182b;border-color:transparent}.primary:hover{background:#d1b3f1}input,select{padding:7px 9px;min-width:0}header{min-height:68px;padding:13px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px}header strong{font-size:19px;letter-spacing:-.4px}header small{color:var(--muted)}.spacer{flex:1}.shell{display:grid;grid-template-columns:minmax(0,1fr) 300px;height:calc(100dvh - 68px)}main{display:flex;flex-direction:column;min-width:0;min-height:0}.tools{display:flex;gap:6px;align-items:center;padding:10px 16px;flex-wrap:wrap;border-bottom:1px solid var(--line)}.tools label{color:var(--muted);display:flex;align-items:center;gap:5px;font-size:12px}.tools input{min-height:0;accent-color:var(--accent)}#canvas{position:relative;flex:1;overflow:hidden;background:#ecece7;min-height:300px}#plan{display:block;width:100%;height:100%;touch-action:none;user-select:none}#plan [data-item]{cursor:grab}#plan [data-item]:active{cursor:grabbing}.canvas-note{position:absolute;left:16px;bottom:13px;background:#ffffffdc;color:#586068;border:1px solid #d4d7d7;border-radius:7px;padding:7px 10px;pointer-events:none;font-size:11px}.status{padding:8px 16px;color:var(--muted);font-size:12px;display:flex;gap:12px;align-items:center;min-height:34px}aside{border-left:1px solid var(--line);padding:18px;overflow-y:auto;background:var(--panel)}h2{font-size:16px;margin:0 0 13px}h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:23px 0 10px}.selection{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:20px}.selection button{font-size:12px;flex:1;padding:7px}.selection button[aria-pressed=true]{border-color:var(--accent);color:#e4cbff;background:#383040}.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px 9px}.fields label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11px}.fields input,.fields select{width:100%;color:var(--ink);font-size:14px}.wide{grid-column:1/-1}.subtle{font-size:12px;line-height:1.6;color:var(--muted);margin:9px 0}.actions{display:flex;gap:6px;margin-top:12px}.actions button{flex:1}.metric{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px}.metric b{font-variant-numeric:tabular-nums;white-space:nowrap}#checks{padding:0;list-style:none;font-size:12px;line-height:1.5}#checks li{margin:9px 0;color:#edbf91}#checks .ok{color:#a5cbbb}.saved-row{display:flex;gap:5px;margin-top:7px}.saved-row input,.saved-row select{width:100%;font-size:12px}footer{font-size:11px;line-height:1.6;color:#9496a1;margin-top:18px}#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#252c29;color:#d4f3de;padding:12px 20px;border:1px solid #52675a;border-radius:9px;z-index:20;display:none;max-width:90vw}.hide{display:none!important}@media(max-width:900px){header{padding:10px 14px;gap:10px;flex-wrap:wrap}header small{display:none}.shell{grid-template-columns:minmax(0,1fr) 260px}aside{padding:13px}.tools{padding:8px}.canvas-note{font-size:10px}}@media(max-width:650px){body{overflow:auto}header{min-height:90px}.shell{display:flex;flex-direction:column;height:auto}main{height:70dvh;min-height:470px}aside{border-left:0;border-top:1px solid var(--line);overflow:visible}.fields{grid-template-columns:1fr 1fr}button{min-height:44px}.canvas-note{max-width:90%}header select{max-width:230px}}@media print{header,.tools,aside,.status,.canvas-note{display:none}.shell{display:block;height:95vh}main{height:100%}body{background:white}#canvas{height:95vh}}
+</style></head><body><header><strong>Кімната <span style="color:#a4a6b1;font-weight:400">/ конструктор</span></strong><small>272 × 312 см · вигляд зверху</small><span class="spacer"></span><select id="preset" aria-label="Початкове планування"><option value="concept-02">Новий концепт 2</option><option value="variant-01">Варіант 1 · зафіксований</option></select><button id="exportJSON" class="primary">Експорт JSON</button><button id="importJSON">Імпорт</button><input id="fileInput" type="file" accept=".json,application/json" hidden></header><div class="shell"><main><div class="tools"><button id="undo" title="Ctrl+Z" aria-label="Скасувати">↶</button><button id="redo" title="Ctrl+Shift+Z" aria-label="Повторити">↷</button><button id="rotate">Повернути 90° · R</button><span class="spacer"></span><label><input type="checkbox" id="snap" checked>Крок 5 см</label><label><input type="checkbox" id="zones" checked>Зони</label><button id="zoomOut" aria-label="Зменшити масштаб">−</button><button id="fit">Вписати</button><button id="zoomIn" aria-label="Збільшити масштаб">+</button><button id="exportSVG">SVG</button></div><div id="canvas"><svg id="plan" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="План кімнати: перетягуйте меблі та двері"></svg><div class="canvas-note">Тягни предмет · R - поворот · стрілки - 1 см · Shift + стрілки - 10 см</div></div><div class="status"><span id="saveStatus">Зміни зберігаються в цьому браузері</span><span class="spacer"></span><span id="zoomLabel">100%</span></div></main><aside><h2>Розміщення</h2><div class="selection"><button data-select="bed">Ліжко</button><button data-select="desk">Стіл</button><button data-select="storage">Тумба</button><button data-select="tv">ТВ</button><button data-select="door">Двері</button></div><h2 id="selectedTitle">Ліжко</h2><div id="furnitureFields"><div class="fields"><label>Від лівої стіни, см<input id="posX" type="number" step="1"></label><label>Від верхньої стіни, см<input id="posY" type="number" step="1"></label><label>Ширина на плані, см<input id="sizeX" type="number" min="1" step="1"></label><label>Глибина на плані, см<input id="sizeY" type="number" min="1" step="1"></label></div><p class="subtle" id="orientation"></p></div><div id="doorFields" class="hide"><div class="fields"><label class="wide">Від балконної стіни, см<input id="doorPos" type="number" min="25" max="197" step="1"></label><label class="wide">Перемістити проріз<input id="doorSlide" type="range" min="25" max="197" step="1"></label><label>Відкривання<select id="doorDirection"><option value="In">У спальню</option><option value="Out">Назовні</option></select></label><label>Петлі<select id="doorHinge"><option value="Left">Біля балкона</option><option value="Right">Біля глухої</option></select></label></div><p class="subtle">Проріз 90 см · полотно 80 см. Розрахунковий дверний блок, не монтажна специфікація.</p></div><h3>Що перевіряється</h3><div class="metric"><span>Ліжко → конвектор</span><b id="bedDistance">—</b></div><div class="metric"><label for="buffer">Буфер конвектора, см</label><input id="buffer" type="number" min="0" max="150" step="5" value="30" style="width:66px"></div><ul id="checks"></ul><p class="subtle">Перевірка перетинів, не доказ прохідності. Відстань до приладу не гарантує теплового комфорту чи паспортної безпеки.</p><h3>Мої варіанти</h3><div class="saved-row"><input id="variantName" maxlength="80" placeholder="Назва мого варіанта" aria-label="Назва мого варіанта"><button id="saveVariant">Зберегти</button></div><div class="saved-row"><select id="savedVariants" aria-label="Мої збережені варіанти"><option value="">Оберіть варіант</option></select></div><div class="actions"><button id="loadVariant">Відкрити</button><button id="deleteVariant">Видалити</button></div><div class="actions"><button id="reset">Скинути до пресета</button></div><footer>Вікно, конвектор, ніша й розміри кімнати зафіксовані. Автозбереження локальне; для перенесення або перевірки зі мною експортуй JSON.</footer><section id="cloudPanel" style="padding-top:18px;border-top:1px solid var(--line);margin-top:18px"><h2>Концепти на GitHub</h2><p class="hint">Спільна бібліотека для всіх твоїх пристроїв. Кожне збереження створює новий файл, не перезаписує попередній.</p><label style="display:block">Назва концепту<input id="cloudName" placeholder="Мій варіант" maxlength="80" style="width:100%;margin:6px 0"></label><button id="cloudSave" class="primary" style="width:100%">Зберегти на GitHub</button><select id="cloudList" aria-label="Концепти на GitHub" style="width:100%;margin-top:10px"><option value="">Завантаження…</option></select><div class="row"><button id="cloudLoad">Відкрити</button><button id="cloudRefresh">Оновити список</button></div><p id="cloudStatus" class="hint" role="status" aria-live="polite">Підключення до GitHub…</p><details id="cloudAccess"><summary style="cursor:pointer;padding:8px 0">Доступ для збереження</summary><p class="hint">Створи fine-grained token: власник vossapov, <b>Only select repositories → room-planner</b>, Repository permissions → <b>Contents: Read and write</b>. Інші репозиторії та дозволи не потрібні.</p><a href="https://github.com/settings/personal-access-tokens/new?name=Room%20Planner&amp;target_name=vossapov&amp;description=Save%20room%20concepts&amp;expires_in=30&amp;contents=write" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">Створити обмежений ключ у GitHub ↗</a><label style="display:block;margin-top:12px">Fine-grained token<input id="cloudToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" style="width:100%;margin:6px 0"></label><div class="row"><button id="cloudConnect">Підключити</button><button id="cloudDisconnect">Від’єднати</button></div><p class="hint">Ключ живе лише в пам’яті цієї вкладки. Після перезавантаження введи його знову. Не додавай ключ до JSON чи репозиторію. План і концепти публічні.</p></details><p class="hint"><a href="https://github.com/vossapov/room-planner/tree/main/concepts" target="_blank" rel="noopener noreferrer" style="color:var(--muted)">Файли й історія на GitHub ↗</a></p></section></aside></div><div id="toast" role="status"></div><script>// Core geometry library for room layout editor
+// Pure functions, no UI dependencies, testable with Node
+
+function rectOverlap(r1, r2) {
+  // Two rects overlap if they are NOT separated
+  // Touching edges are NOT considered overlapping
+  return !(r1.x1 <= r2.x0 || r2.x1 <= r1.x0 || 
+           r1.y1 <= r2.y0 || r2.y1 <= r1.y0);
+}
+
+function pointInRect(x, y, rect) {
+  return x >= rect.x0 && x <= rect.x1 && 
+         y >= rect.y0 && y <= rect.y1;
+}
+
+function rotatePoint(x, y, cx, cy, angle) {
+  // Rotate (x, y) around (cx, cy) by angle radians (positive = CCW)
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const dx = x - cx;
+  const dy = y - cy;
+  return {
+    x: cx + dx * cos - dy * sin,
+    y: cy + dx * sin + dy * cos
+  };
+}
+
+function rotateBedHeadEnd(bed, newHeadEnd, room) {
+  // Rotate bed around its center so head_end points to newHeadEnd
+  // room = { nx, ny } = room dimensions
+  const headEnds = ['x0', 'y0', 'x1', 'y1'];
+  const currentIdx = headEnds.indexOf(bed.head_end);
+  const newIdx = headEnds.indexOf(newHeadEnd);
+  if (currentIdx === -1 || newIdx === -1) 
+    throw new Error(`Invalid head_end: ${bed.head_end} or ${newHeadEnd}`);
+  
+  let rotations = (newIdx - currentIdx + 4) % 4;
+  let result = { ...bed };
+  
+  for (let i = 0; i < rotations; i++) {
+    result = _rotateBedOnce(result, room);
+  }
+  
+  return result;
+}
+
+function _rotateBedOnce(bed, room) {
+  // Rotate bed 90deg CCW (in world coords: Y up, X right)
+  // head_end cycles: x0 -> y0 -> x1 -> y1 -> x0
+  const w = bed.x1 - bed.x0;  // width along X
+  const h = bed.y1 - bed.y0;  // height along Y
+  const cx = bed.x0 + w / 2;
+  const cy = bed.y0 + h / 2;
+  
+  // 90deg CCW rotation: new coords
+  const corners = [
+    { x: bed.x0, y: bed.y0 },
+    { x: bed.x1, y: bed.y0 },
+    { x: bed.x1, y: bed.y1 },
+    { x: bed.x0, y: bed.y1 }
+  ];
+  
+  const rotated = corners.map(c => rotatePoint(c.x, c.y, cx, cy, Math.PI / 2));
+  
+  const xs = rotated.map(c => c.x);
+  const ys = rotated.map(c => c.y);
+  const nx0 = Math.min(...xs);
+  const nx1 = Math.max(...xs);
+  const ny0 = Math.min(...ys);
+  const ny1 = Math.max(...ys);
+  
+  const headEnds = ['x0', 'y0', 'x1', 'y1'];
+  const currentIdx = headEnds.indexOf(bed.head_end);
+  const newHeadEnd = headEnds[(currentIdx + 1) % 4];
+  
+  return {
+    ...bed,
+    x0: nx0,
+    y0: ny0,
+    x1: nx1,
+    y1: ny1,
+    head_end: newHeadEnd
+  };
+}
+
+function rotateDeskWorkSide(desk, newWorkSide, room) {
+  // Rotate desk so work_side points to newWorkSide
+  const sides = ['-X', '-Y', '+X', '+Y'];
+  const currentIdx = sides.indexOf(desk.work_side);
+  const newIdx = sides.indexOf(newWorkSide);
+  if (currentIdx === -1 || newIdx === -1)
+    throw new Error(`Invalid work_side: ${desk.work_side} or ${newWorkSide}`);
+  
+  let rotations = (newIdx - currentIdx + 4) % 4;
+  let result = { ...desk };
+  
+  for (let i = 0; i < rotations; i++) {
+    result = _rotateDeskOnce(result, room);
+  }
+  
+  return result;
+}
+
+function _rotateDeskOnce(desk, room) {
+  // Rotate desk 90deg CCW
+  // work_side cycles: -X -> -Y -> +X -> +Y -> -X
+  const w = desk.x1 - desk.x0;
+  const h = desk.y1 - desk.y0;
+  const cx = desk.x0 + w / 2;
+  const cy = desk.y0 + h / 2;
+  
+  const corners = [
+    { x: desk.x0, y: desk.y0 },
+    { x: desk.x1, y: desk.y0 },
+    { x: desk.x1, y: desk.y1 },
+    { x: desk.x0, y: desk.y1 }
+  ];
+  
+  const rotated = corners.map(c => rotatePoint(c.x, c.y, cx, cy, Math.PI / 2));
+  
+  const xs = rotated.map(c => c.x);
+  const ys = rotated.map(c => c.y);
+  const nx0 = Math.min(...xs);
+  const nx1 = Math.max(...xs);
+  const ny0 = Math.min(...ys);
+  const ny1 = Math.max(...ys);
+  
+  const sides = ['-X', '-Y', '+X', '+Y'];
+  const currentIdx = sides.indexOf(desk.work_side);
+  const newWorkSide = sides[(currentIdx + 1) % 4];
+  
+  return {
+    ...desk,
+    x0: nx0,
+    y0: ny0,
+    x1: nx1,
+    y1: ny1,
+    work_side: newWorkSide
+  };
+}
+
+function rotateDoor4ways(door,targetSwing,room) {
+  if(!['InLeft','InRight','OutLeft','OutRight'].includes(targetSwing))throw Error('Invalid swing');
+  const outward=targetSwing.startsWith('Out'),top=targetSwing.endsWith('Left');
+  if(!Number.isFinite(door.d_mm))throw Error('Invalid door position');
+  return {...door,swing:targetSwing,hinge_mm:[outward?room.nx+100:room.nx,door.d_mm+(top?50:850)]};
+}
+function computeDoorSwingGeo(hinge_mm,leafLen,swing,rough){
+ const [hx,hy]=hinge_mm,thick=40,out=swing.startsWith('Out'),top=swing.endsWith('Left');
+ const leaf_closed={x0:out?hx-thick:hx,y0:top?hy:hy-leafLen,x1:out?hx:hx+thick,y1:top?hy+leafLen:hy};
+ const sign=out===top?-1:1,corners=[];
+ for(const x of [leaf_closed.x0,leaf_closed.x1])for(const y of [leaf_closed.y0,leaf_closed.y1])corners.push([hx-sign*(y-hy),hy+sign*(x-hx)]);
+ const leaf_open={x0:Math.min(...corners.map(p=>p[0])),y0:Math.min(...corners.map(p=>p[1])),x1:Math.max(...corners.map(p=>p[0])),y1:Math.max(...corners.map(p=>p[1]))};
+ const radius=Math.hypot(leafLen,thick);
+ const swing_zone={x0:out?hx-thick:hx-radius,y0:top?hy:hy-radius,x1:out?hx+radius:hx+thick,y1:top?hy+radius:hy};
+ return {leaf_closed,leaf_open,swing_zone};
+}
+
+function validateLayoutSchema(layout) {
+  // Validate that layout has required numeric fields and no NaN/Infinity
+  // Must reject empty {}, null, or objects with incomplete rect fields
+  
+  if (!layout || typeof layout !== 'object' || Array.isArray(layout)) {
+    throw new Error('Layout must be a non-array object');
+  }
+  
+  // Must have at least one furniture item
+  const itemNames = ['bed', 'desk', 'storage', 'tv', 'door', 'chair_work', 'chair_pulled', 'chair_swept'];
+  const hasAnyItem = itemNames.some(name => name in layout && layout[name] !== null);
+  if (!hasAnyItem) {
+    throw new Error('Layout must have at least one furniture item');
+  }
+  
+  const checkRect = (obj, name) => {
+    if (!obj) return;
+    
+    // Check that all required coord fields exist
+    const requiredFields = ['x0', 'y0', 'x1', 'y1'];
+    for (const field of requiredFields) {
+      if (!(field in obj)) {
+        throw new Error(`${name}.${field} is missing`);
+      }
+      const val = obj[field];
+      if (typeof val !== 'number' || !Number.isFinite(val)) {
+        throw new Error(`${name}.${field} must be finite number, got ${val}`);
+      }
+    }
+    
+    if (obj.x0 >= obj.x1)
+      throw new Error(`${name}: x0 >= x1`);
+    if (obj.y0 >= obj.y1)
+      throw new Error(`${name}: y0 >= y1`);
+  };
+  
+  ['bed', 'desk', 'storage', 'tv', 'chair_work', 'chair_pulled', 'chair_swept']
+    .forEach(key => checkRect(layout[key], key));
+  
+  if (layout.door) {
+    if ('d_mm' in layout.door) {
+      const val = layout.door.d_mm;
+      if (typeof val !== 'number' || !Number.isFinite(val))
+        throw new Error('door.d_mm must be finite number');
+    }
+    if ('swing' in layout.door && typeof layout.door.swing !== 'string')
+      throw new Error('door.swing must be string');
+    if ('hinge_mm' in layout.door) {
+      if (!Array.isArray(layout.door.hinge_mm) || layout.door.hinge_mm.length !== 2)
+        throw new Error('door.hinge_mm must be 2-element array');
+      for (let i = 0; i < 2; i++) {
+        const val = layout.door.hinge_mm[i];
+        if (typeof val !== 'number' || !Number.isFinite(val))
+          throw new Error(`door.hinge_mm[${i}] must be finite number`);
+      }
+    }
+  }
+}
+
+function snapToGrid(value, gridSize) {
+  // Snap value to nearest grid line
+  return Math.round(value / gridSize) * gridSize;
+}
+
+function clampRect(rect, room) {
+  // Translate rect to keep it within room bounds without shrinking
+  let x0 = rect.x0;
+  let y0 = rect.y0;
+  const width = rect.x1 - rect.x0;
+  const height = rect.y1 - rect.y0;
+  
+  // Clamp x0 to left wall
+  if (x0 < 0) x0 = 0;
+  // Clamp x1 to right wall by moving x0
+  if (x0 + width > room.nx) x0 = room.nx - width;
+  
+  // Clamp y0 to top wall
+  if (y0 < 0) y0 = 0;
+  // Clamp y1 to bottom wall by moving y0
+  if (y0 + height > room.ny) y0 = room.ny - height;
+  
+  return {
+    x0,
+    y0,
+    x1: x0 + width,
+    y1: y0 + height
+  };
+}
+
+function distPointToRect(px, py, rect) {
+  // Minimum distance from point to rect
+  const dx = Math.max(rect.x0 - px, 0, px - rect.x1);
+  const dy = Math.max(rect.y0 - py, 0, py - rect.y1);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function rectCenter(rect) {
+  return {
+    x: (rect.x0 + rect.x1) / 2,
+    y: (rect.y0 + rect.y1) / 2
+  };
+}
+
+// Default room geometry (mm)
+const DEFAULT_ROOM = {
+  nx: 2720,
+  ny: 3120,
+  window_y0_mm: 2710,
+  window_y1_mm: 3060,
+  convector_rect: { x0: 0, y0: 0, x1: 250, y1: 750 },
+  niche_x0_mm: 1340,
+  niche_x1_mm: 2720,
+  partition_x: 2720,
+  partition_thickness: 100
+};
+
+function screenToWorld(screenX, room = DEFAULT_ROOM) {
+  // Convert screen X coordinate to world X
+  // screenX = 2720 - worldX (mirrored)
+  return room.nx - screenX;
+}
+
+function worldToScreen(worldX, room = DEFAULT_ROOM) {
+  return room.nx - worldX;
+}
+
+</script><script>const PRESETS={"variant-01": {"id": "V1", "family_key": "+X", "family_ua": "ноги до перегородки (+X)", "concept": "Узголів’я впритул до вуличної стіни, довга сторона до глухої; тумба збоку біля голови.", "bed": {"name": "Ліжко 1400x2000", "x0": 0, "y0": 1720, "x1": 2000, "y1": 3120, "head_end": "x0", "head_wall_ua": "узголів'я до вуличної стіни X=0", "dims_mm": [2000, 1400], "long_side_used": "-Y"}, "desk": {"name": "Стіл 900x600", "x0": 2120.0, "y0": 0.0, "x1": 2720.0, "y1": 900.0, "work_side": "-X", "chair_offset_mm": 0.0, "work_edge_mm": 900, "work_edge": [2120.0, 0.0, 2120.0, 900.0]}, "chair_work": {"name": "Крісло (робоче)", "x0": 1470.0, "y0": 0.0, "x1": 2120.0, "y1": 650.0}, "chair_pulled": {"name": "Крісло (відсунуте)", "x0": 920.0, "y0": 0.0, "x1": 1570.0, "y1": 650.0}, "chair_swept": {"name": "Слід руху крісла", "x0": 920.0, "y0": 0.0, "x1": 2120.0, "y1": 650.0}, "chair_pull_mm": 550, "storage": {"name": "Тумба 400x400", "x0": 0, "y0": 1320, "x1": 400, "y1": 1720}, "tv": {"name": "ТВ 1200", "x0": 2660.0, "y0": 1820.0, "x1": 2720.0, "y1": 3020.0, "wall": "partition", "wall_ua": "перегородка X=2720", "segment_mm": 1200, "bottom_mm": 1100, "depth_mm": 60, "view_direction": "+X", "niche_plane_overlap_mm": 0.0}, "door": {"d_mm": 900.0, "swing": "OutLeft", "swing_ua": "у стару кімнату, петлі з боку балкона", "rough": {"name": "Чорновий проріз 900", "x0": 2720.0, "y0": 900.0, "x1": 2820.0, "y1": 1800.0}, "rough_height_mm": 2100, "clear_portal": {"name": "Чистий портал 750", "x0": 2720.0, "y0": 975.0, "x1": 2820.0, "y1": 1725.0}, "hinge_mm": [2820, 950.0], "leaf_open": {"name": "", "x0": 2820.0, "y0": 950.0, "x1": 3620.0, "y1": 990.0}, "leaf_closed": {"name": "", "x0": 2780.0, "y0": 950.0, "x1": 2820.0, "y1": 1750.0}, "swing_zone": {"name": "", "x0": 2780.0, "y0": 950.0, "x1": 3620.999375780031, "y1": 1750.9993757800314}, "return_balcony_mm": 900.0, "return_blind_mm": 1320.0}, "landing_zone": {"name": "Зона посадки", "x0": 500.0, "y0": 1220.0, "x1": 1500.0, "y1": 1720.0, "side": "-Y"}, "route": {"start_mm": [3070.0, 1350.0], "goal_mm": [1000.0, 1470], "polyline_mm": [[3070.0, 1350.0], [1000.0, 1350.0], [1000.0, 1470]], "swept_rects": [[750.0, 1100.0, 3320.0, 1600.0], [750.0, 1100.0, 1250.0, 1720.0]], "length_mm": 2190.0, "turns": 1, "guaranteed_width_mm": 500, "width_status_ua": "перевірено >=500 мм", "grid_step_mm": 10, "note": "Безперервний маршрут доведено квадратом людини 500x500. Максимальну ширину більшого swept-квадрата не обчислювали; локальні поперечні зазори не видаються за ширину всього маршруту."}, "chair_route": {"edge": "бік", "goal_mm": [1240, 900.0], "polyline_mm": [[3070.0, 1350.0], [1240.0, 1350.0], [1240.0, 900.0]], "shared_edge_mm": 500.0}, "clearances_mm": {"bed": 970.0, "desk": 1870.0, "storage": 570.0, "tv": 2636.8541863364385, "chair_work": 1220.0, "chair_pulled": 670.0, "chair_swept": 670.0}, "relaxations": ["window_corner", "bed_long_side_contact"], "convector_project_buffer_mm": 300, "window_access_required": false, "status_note": "Одна поточна рекомендована схема, не доказ глобального оптимуму. Дверний блок і паспорт конвектора потребують уточнення."}, "concept-02": {"id": "concept-02-reworked", "status": "candidate_not_yet_approved", "family_key": "-Y", "family_ua": "ноги до балконної стіни (-Y)", "concept": "Нова орієнтація: узголів’я до глухої стіни, тумба збоку біля голови, ТВ у площині ніші навпроти ніг, вхід угорі перегородки, стіл 900x500 у віконному куті.", "bed": {"name": "Ліжко 1400x2000", "x0": 1300.0, "y0": 1120.0, "x1": 2700.0, "y1": 3120.0, "head_end": "y1", "head_wall_ua": "узголів'я до глухої стіни Y=3120", "dims_mm": [1400, 2000], "long_side_used": "-X"}, "desk": {"name": "Стіл 900x500 - погоджено користувачем", "x0": 0.0, "y0": 2620.0, "x1": 900.0, "y1": 3120.0, "work_side": "-Y", "chair_offset_mm": 0, "work_edge_mm": 900, "work_edge": [0, 2620, 900, 2620]}, "storage": {"name": "Тумба 400x400", "x0": 900.0, "y0": 2720.0, "x1": 1300.0, "y1": 3120.0}, "tv": {"name": "ТВ 1200", "x0": 1400.0, "y0": 0.0, "x1": 2600.0, "y1": 60.0, "wall": "balcony", "wall_ua": "балконна стіна Y=0", "segment_mm": 1200, "bottom_mm": 1100, "depth_mm": 60, "view_direction": "-Y", "niche_plane_overlap_mm": 1200}, "chair_work": {"name": "Крісло (робоче)", "x0": 0.0, "y0": 1970.0, "x1": 650.0, "y1": 2620.0}, "chair_pulled": {"name": "Крісло (відсунуте)", "x0": 0.0, "y0": 1420.0, "x1": 650.0, "y1": 2070.0}, "chair_swept": {"name": "Слід руху крісла", "x0": 0.0, "y0": 1420.0, "x1": 650.0, "y1": 2620.0}, "chair_pull_mm": 550, "door": {"d_mm": 250, "swing": "InLeft", "swing_ua": "у спальню, петлі з боку балкона", "rough": {"name": "", "x0": 2720.0, "y0": 250.0, "x1": 2820.0, "y1": 1150.0}, "rough_height_mm": 2100, "clear_portal": {"name": "", "x0": 2720.0, "y0": 325.0, "x1": 2820.0, "y1": 1075.0}, "hinge_mm": [2720, 300], "leaf_closed": {"name": "", "x0": 2720.0, "y0": 300.0, "x1": 2760.0, "y1": 1100.0}, "leaf_open": {"name": "", "x0": 1920.0, "y0": 300.0, "x1": 2720.0, "y1": 340.0}, "swing_zone": {"name": "", "x0": 1919.0006242199686, "y0": 300.0, "x1": 2760.0, "y1": 1100.9993757800314}, "return_balcony_mm": 250, "return_blind_mm": 1970}, "landing_zone": {"name": "Зона посадки", "x0": 800.0, "y0": 1620.0, "x1": 1300.0, "y1": 2620.0, "side": "-X"}, "window_access_required": false, "convector_project_buffer_mm": 300, "route": {"start_mm": [3070.0, 700], "goal_mm": [1050.0, 2120.0], "polyline_mm": [[3070.0, 700], [1050.0, 700], [1050.0, 2120.0]], "swept_rects": [[800.0, 450.0, 3320.0, 950.0], [800.0, 450.0, 1300.0, 2370.0]], "length_mm": 3440.0, "guaranteed_width_mm": 500}, "chair_route": {"goal_mm": [900.0, 1745.0], "polyline_mm": [[3070.0, 700], [1050.0, 700], [1050.0, 1745.0], [900.0, 1745.0]], "edge": "бік відсунутого крісла", "shared_edge_mm": 500}, "headboard_niche_plane_overlap_mm": 0, "user_approved_change": "Стіл 90×50 см - зберегти ширину й повну зону вставання; відповідь у формі уточнення.", "assumptions": ["Кріплення ТВ у площині ніші потребує перевірки суцільної основи.", "Віддалення ліжка від конвектора не є тепловим розрахунком або гарантією комфорту.", "Газовий паспорт і фактичний дверний блок невідомі.", "Дверна дуга має малий геометричний запас перед торцем ліжка; потрібна звірка реального блока.", "Існуючий коридорний прохід 600 мм: розбірні меблі; занесення матраца перевірити."], "clearances_mm": {"bed": 1113.2834320154054, "desk": 1870.0, "storage": 2074.463786138481, "tv": 1150.0, "chair_work": 1220.0, "chair_pulled": 670.0, "chair_swept": 670.0}, "door_swing_bbox_bed_gap_mm": 19.000624219968586, "status_note": "Новий концепт 2, не старий варіант 2. Стіл 90x50 погоджено; сам концепт ще не схвалено."}};</script><script>'use strict';
+const NX=2720,NY=3120,KEY='remont.constructor.v1',NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id),copy=x=>JSON.parse(JSON.stringify(x));
+const names={bed:'Ліжко',desk:'Стіл',storage:'Тумба',tv:'ТВ',door:'Двері'};
+const colors={bed:['#e7d3ae','#967954'],desk:['#bfd5df','#527989'],storage:['#d8ccb8','#8c7a60'],tv:['#405365','#405365']};
+const conv={x0:0,y0:0,x1:250,y1:750};
+let state={layout:null,preset:'concept-02',selected:'bed',buffer:300,snap:true,zones:true,zoom:1},history=[],index=-1,saved=[],drag=null,toastTimer;
+function toast(t){$('toast').textContent=t;$('toast').style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.display='none',3500)}
+function box(x0,y0,x1,y1){return{x0,y0,x1,y1}}
+function distance(a,b){return Math.hypot(Math.max(a.x0-b.x1,b.x0-a.x1,0),Math.max(a.y0-b.y1,b.y0-a.y1,0))}
+function validLayout(l){if(!l||typeof l!=='object')throw Error('Немає геометрії плану');for(const k of ['bed','desk','storage','tv']){const r=l[k];if(!r||!['x0','y0','x1','y1'].every(n=>Number.isFinite(r[n])))throw Error('Некоректні координати: '+names[k]);if(r.x1<=r.x0||r.y1<=r.y0||r.x1-r.x0>NX||r.y1-r.y0>NY||Math.abs(r.x0)>10000||Math.abs(r.y0)>10000)throw Error('Некоректні габарити: '+names[k])}if(!['x0','x1','y0','y1'].includes(l.bed.head_end))throw Error('Невідоме узголів’я');if(!['-X','+X','-Y','+Y'].includes(l.desk.work_side))throw Error('Невідомий робочий бік стола');if(!l.door||!Number.isFinite(l.door.d_mm)||l.door.d_mm<250||l.door.d_mm>1970||!['InLeft','InRight','OutLeft','OutRight'].includes(l.door.swing))throw Error('Некоректні двері');return true}
+function derive(){const l=state.layout,d=l.desk,c=650,p=550,side=d.work_side;let off=Number.isFinite(d.chair_offset_mm)?d.chair_offset_mm:0;const edge=side.endsWith('X')?d.y1-d.y0:d.x1-d.x0;off=Math.max(0,Math.min(off,Math.max(0,edge-c)));let w,r;if(side==='+X'){w=box(d.x1,d.y0+off,d.x1+c,d.y0+off+c);r=box(w.x0+p,w.y0,w.x1+p,w.y1)}else if(side==='-X'){w=box(d.x0-c,d.y0+off,d.x0,d.y0+off+c);r=box(w.x0-p,w.y0,w.x1-p,w.y1)}else if(side==='+Y'){w=box(d.x0+off,d.y1,d.x0+off+c,d.y1+c);r=box(w.x0,w.y0+p,w.x1,w.y1+p)}else{w=box(d.x0+off,d.y0-c,d.x0+off+c,d.y0);r=box(w.x0,w.y0-p,w.x1,w.y1-p)}l.chair_work=w;l.chair_pulled=r;l.chair_swept=box(Math.min(w.x0,r.x0),Math.min(w.y0,r.y0),Math.max(w.x1,r.x1),Math.max(w.y1,r.y1));const pos=l.door.d_mm;l.door.rough=box(NX,pos,NX+100,pos+900);const dd=rotateDoor4ways(l.door,l.door.swing,{nx:NX,ny:NY});Object.assign(l.door,dd,computeDoorSwingGeo(dd.hinge_mm,800,dd.swing,dd.rough));l.door.clear_portal=box(NX,pos+75,NX+100,pos+825);delete l.route;delete l.chair_route;delete l.checks;delete l.clearances_mm;delete l.landing_zone;delete l.door_swing_bbox_bed_gap_mm;delete l.status_note;delete l.headboard_niche_plane_overlap_mm;delete l.assumptions;delete l.concept;delete l.family_ua;delete l.family_key;l.bed.dims_mm=[l.bed.x1-l.bed.x0,l.bed.y1-l.bed.y0];delete l.bed.head_wall_ua;delete l.bed.long_side_used;delete l.desk.work_edge;l.door.return_balcony_mm=pos;l.door.return_blind_mm=NY-pos-900;delete l.door.swing_ua;for(const k of ['wall','wall_ua','view_direction','niche_plane_overlap_mm'])delete l.tv[k];l.status='user_edited_not_route_validated'}
+function headTouches(b){return Math.abs(b[b.head_end]-(b.head_end.endsWith('1')?(b.head_end[0]==='x'?NX:NY):0))<1}
+function nightAtHead(b,n){let along,adj;if(b.head_end[0]==='x'){const a=b.head_end==='x0'?b.x0:b.x1-400;along=Math.min(n.x1,a+400)>Math.max(n.x0,a);adj=(n.y1<=b.y0+1&&b.y0-n.y1<=150)||(n.y0>=b.y1-1&&n.y0-b.y1<=150)}else{const a=b.head_end==='y0'?b.y0:b.y1-400;along=Math.min(n.y1,a+400)>Math.max(n.y0,a);adj=(n.x1<=b.x0+1&&b.x0-n.x1<=150)||(n.x0>=b.x1-1&&n.x0-b.x1<=150)}return along&&adj}
+function checks(){const l=state.layout,w=[],bad=new Set(),keys=['bed','desk','storage','tv'];function add(t,ids=[]){w.push(t);ids.forEach(x=>bad.add(x))}for(let i=0;i<keys.length;i++){const k=keys[i],a=l[k];if(a.x0<-.01||a.y0<-.01||a.x1>NX+.01||a.y1>NY+.01)add(names[k]+' виходить за межі кімнати',[k]);for(const k2 of keys.slice(i+1))if(rectOverlap(a,l[k2]))add(names[k]+' перетинає '+names[k2].toLowerCase(),[k,k2]);if(distance(a,conv)<state.buffer-.01)add(names[k]+': у буфері конвектора',[k]);if(k!=='desk'&&rectOverlap(a,l.chair_swept))add(names[k]+': заважає відсуванню крісла',[k]);if(rectOverlap(a,l.door.swing_zone))add(names[k]+': у межах габариту дуги дверей (консервативно)',[k,'door']);if(a.x1>=NX-.01&&Math.min(a.y1,l.door.rough.y1)>Math.max(a.y0,l.door.rough.y0))add(names[k]+': біля дверного прорізу',[k,'door'])}const s=l.chair_swept;if(s.x0<0||s.y0<0||s.x1>NX||s.y1>NY)add('Кріслу бракує місця для повного відсування',['desk']);if(distance(s,conv)<state.buffer)add('Зона крісла потрапляє в буфер конвектора',['desk']);if(rectOverlap(s,l.door.swing_zone))add('Двері можуть заважати кріслу (габарит дуги)',['door','desk']);if(!headTouches(l.bed))add('Узголів’я не впритул до стіни',['bed']);if(!nightAtHead(l.bed,l.storage))add('Тумба має стояти збоку біля голови',['storage']);const t=l.tv;if(Math.min(Math.abs(t.x0),Math.abs(t.y0),Math.abs(NX-t.x1),Math.abs(NY-t.y1))>1)add('ТВ не розміщено біля стіни',['tv']);if(t.x0<1&&Math.min(t.y1,3060)>Math.max(t.y0,2710))add('ТВ перекриває мале вікно',['tv']);for(const g of [box(2820,0,3700,880),box(3700,2200,4300,3120)])if(rectOverlap(l.door.swing_zone,g))add('Дуга дверей зачіпає відому зовнішню зону',['door']);return{warnings:[...new Set(w)],bad:[...bad],bedDistance:distance(l.bed,conv)}}
+function snapshot(){return{layout:copy(state.layout),preset:state.preset,buffer:state.buffer}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({version:1,...snapshot(),snap:state.snap,zones:state.zones,saved}));$('saveStatus').textContent='Збережено в цьому браузері · JSON для перенесення'}catch{$('saveStatus').textContent='Автозбереження недоступне - експортуй JSON'}}
+function commit(){derive();history=history.slice(0,index+1);history.push(snapshot());if(history.length>80)history.shift();index=history.length-1;persist();render()}
+function restore(n){if(n<0||n>=history.length)return;index=n;Object.assign(state,copy(history[n]));derive();persist();render()}
+function loadPreset(id){if(!PRESETS[id])return;state.layout=copy(PRESETS[id]);state.preset=id;commit()}
+function moveRect(k,x,y){const a=state.layout[k],w=a.x1-a.x0,h=a.y1-a.y0;let r=box(x,y,x+w,y+h);if(state.snap){r.x0=Math.round(r.x0/50)*50;r.y0=Math.round(r.y0/50)*50;r.x1=r.x0+w;r.y1=r.y0+h}if(Math.abs(r.x0)<35){r.x0=0;r.x1=w}else if(Math.abs(NX-r.x1)<35){r.x0=NX-w;r.x1=NX}if(Math.abs(r.y0)<35){r.y0=0;r.y1=h}else if(Math.abs(NY-r.y1)<35){r.y0=NY-h;r.y1=NY}Object.assign(a,clampRect(r,{nx:NX,ny:NY}))}
+function rotateSelected(){const k=state.selected;if(k==='door'){state.layout.door.swing=(state.layout.door.swing.startsWith('In')?'Out':'In')+(state.layout.door.swing.endsWith('Left')?'Left':'Right');commit();return}const a=state.layout[k],w=a.x1-a.x0,h=a.y1-a.y0;if(h>NX||w>NY){toast('Після повороту предмет не вміститься');return}const cx=(a.x0+a.x1)/2,cy=(a.y0+a.y1)/2;Object.assign(a,clampRect(box(cx-h/2,cy-w/2,cx+h/2,cy+w/2),{nx:NX,ny:NY}));if(k==='bed'){const arr=['x0','y0','x1','y1'];a.head_end=arr[(arr.indexOf(a.head_end)+1)%4]}if(k==='desk'){const arr=['-X','-Y','+X','+Y'];a.work_side=arr[(arr.indexOf(a.work_side)+1)%4]}commit()}
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function svgRect(r,fill,stroke='none',extra=''){return`<rect x="${NX-r.x1}" y="${r.y0}" width="${r.x1-r.x0}" height="${r.y1-r.y0}" fill="${fill}" stroke="${stroke}" ${extra}/>`}
+function text(x,y,t,size=55,color='#4d585f',extra=''){size=Math.max(65,size);return`<text x="${x}" y="${y}" text-anchor="middle" font-size="${size}" fill="${color}" font-family="Fixel Text,Segoe UI,sans-serif" ${extra}>${esc(t)}</text>`}
+function line(x1,y1,x2,y2,stroke='#636e72',width=10,extra=''){return`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${width}" ${extra}/>`}
+function renderPlan(report){const l=state.layout,svg=$('plan'),view=[-1100,-280,4150,3770],cx=view[0]+view[2]/2,cy=view[1]+view[3]/2;svg.setAttribute('viewBox',`${cx-view[2]/state.zoom/2} ${cy-view[3]/state.zoom/2} ${view[2]/state.zoom} ${view[3]/state.zoom}`);let out=`<defs><pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M100 0H0V100" fill="none" stroke="#e3e6e5" stroke-width="2"/></pattern><clipPath id="roomClip"><rect width="${NX}" height="${NY}"/></clipPath></defs><rect width="${NX}" height="${NY}" fill="#fafbf8"/><rect width="${NX}" height="${NY}" fill="url(#grid)"/>`;out+=svgRect(box(2820,0,3700,880),'#dce5e7','#a0afb5','stroke-width="6" stroke-dasharray="20 15"')+text(-540,380,'До балкона',48)+text(-540,460,'поза спальнею',40);out+=text(1360,-170,'272 см',68)+text(2860,1550,'312 см',60,'#657276','transform="rotate(90 2860 1550)"')+text(2070,-50,'Балконна стіна',45)+text(1360,3270,'Глуха стіна',52);if(state.zones){const b=state.buffer;out+=`<g clip-path="url(#roomClip)">${svgRect(box(-b,-b,250+b,750+b),'#f4e3d7','#d5a287',`rx="${b}" stroke-width="5"`)}</g>`+svgRect(l.chair_swept,'#e6ecef','#9aadb7','stroke-width="5" stroke-dasharray="20 15"')+svgRect(l.chair_work,'#d4e0e5','#819aa8','stroke-width="5"');const cc=l.chair_work;out+=text(NX-(cc.x0+cc.x1)/2,(cc.y0+cc.y1)/2,'Крісло',48)+text(NX-(cc.x0+cc.x1)/2,(cc.y0+cc.y1)/2+75,'+ 55 см',35)}out+=svgRect(conv,'#dfa98d','#a9785e','stroke-width="6" data-fixed="convector"')+text(NX-125,380,'Конвектор',42,'#704b39',`transform="rotate(-90 ${NX-125} 380)"`);out+=line(0,0,NX,0)+line(NX,0,NX,2710)+line(NX,3060,NX,NY)+line(0,NY,NX,NY)+line(NX,2710,NX,3060,'#6cabc3',28)+line(0,0,NX-1340,0,'#a38860',28);out+=text(NX+150,2920,'Вікно',43);out+=svgRect(box(NX,0,NX+100,l.door.d_mm),'#8a969b')+svgRect(box(NX,l.door.d_mm+900,NX+100,NY),'#8a969b');
+for(const k of ['bed','desk','storage','tv']){const a=l[k],selected=k===state.selected,bad=report.bad.includes(k),[fill,stroke]=colors[k],cx=NX-(a.x0+a.x1)/2,cy=(a.y0+a.y1)/2;out+=`<g data-item="${k}" tabindex="0" aria-label="${names[k]}">`+svgRect(a,fill,bad?'#bd5d59':selected?'#9064bd':stroke,`stroke-width="${selected?14:7}"`);if(k==='bed'){let h;if(a.head_end==='x0')h=box(a.x0+22,a.y0+70,a.x0+250,a.y1-70);if(a.head_end==='x1')h=box(a.x1-250,a.y0+70,a.x1-22,a.y1-70);if(a.head_end==='y0')h=box(a.x0+70,a.y0+22,a.x1-70,a.y0+250);if(a.head_end==='y1')h=box(a.x0+70,a.y1-250,a.x1-70,a.y1-22);out+=svgRect(h,'#fbf3e4','#b9a27a','rx="45" stroke-width="5"');out+=text(cx,cy-20,'Ліжко',83,'#634f39')+text(cx,cy+80,`${Math.round((a.x1-a.x0)/10)} × ${Math.round((a.y1-a.y0)/10)} см`,58,'#634f39')}else if(k==='tv'){const vertical=a.y1-a.y0>a.x1-a.x0;out+=text(cx,cy+18,'ТВ',44,'white',vertical?`transform="rotate(-90 ${cx} ${cy})"`:'')}else out+=text(cx,cy-10,names[k],k==='storage'?49:65)+text(cx,cy+66,`${Math.round((a.x1-a.x0)/10)} × ${Math.round((a.y1-a.y0)/10)}`,44);out+='</g>'}
+const d=l.door,h=d.hinge_mm,o=d.leaf_open,c=d.leaf_closed,top=d.swing.endsWith('Left'),outward=d.swing.startsWith('Out'),start={x:h[0],y:h[1]+(top?800:-800)},end={x:h[0]+(outward?800:-800),y:h[1]},flag=outward===top?1:0;
+out+=`<g data-item="door" tabindex="0" aria-label="Двері">${svgRect(d.rough,'transparent','transparent','stroke-width="15"')}${line(NX-start.x,start.y,NX-h[0],h[1],'#97a1a5',5,'stroke-dasharray="20 15"')}<path d="M${NX-start.x} ${start.y} A800 800 0 0 ${flag} ${NX-end.x} ${end.y}" fill="none" stroke="${state.selected==='door'?'#9064bd':'#83939f'}" stroke-width="8"/>${svgRect(o,'#778696',report.bad.includes('door')?'#bd5d59':'#52697a','stroke-width="7"')}<circle cx="${NX-h[0]}" cy="${h[1]}" r="20" fill="#586c7d"/></g>`;svg.innerHTML=out;$('zoomLabel').textContent=Math.round(state.zoom*100)+'%'}
+function render(){const report=checks();renderPlan(report);$('preset').value=state.preset;document.querySelectorAll('[data-select]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.select===state.selected));$('selectedTitle').textContent=names[state.selected];const isDoor=state.selected==='door';$('furnitureFields').classList.toggle('hide',isDoor);$('doorFields').classList.toggle('hide',!isDoor);function val(id,n){if(document.activeElement!==$(id))$(id).value=n}if(!isDoor){const a=state.layout[state.selected];val('posX',+( (NX-a.x1)/10).toFixed(1));val('posY',+(a.y0/10).toFixed(1));val('sizeX',+((a.x1-a.x0)/10).toFixed(1));val('sizeY',+((a.y1-a.y0)/10).toFixed(1));const label={x0:'праворуч',x1:'ліворуч',y0:'угорі',y1:'унизу','-X':'праворуч','+X':'ліворуч','-Y':'угорі','+Y':'унизу'};$('orientation').textContent=state.selected==='bed'?'Узголів’я '+label[a.head_end]:state.selected==='desk'?'Крісло '+label[a.work_side]+'. Зона рухається разом зі столом.':'Розміри на плані, не висота предмета.'}val('doorPos',state.layout.door.d_mm/10);val('doorSlide',state.layout.door.d_mm/10);val('doorDirection',state.layout.door.swing.startsWith('In')?'In':'Out');val('doorHinge',state.layout.door.swing.endsWith('Left')?'Left':'Right');val('buffer',state.buffer/10);$('bedDistance').textContent=(report.bedDistance/10).toFixed(1)+' см';$('checks').replaceChildren();for(const w of report.warnings){const li=document.createElement('li');li.textContent=w;$('checks').append(li)}if(!report.warnings.length){const li=document.createElement('li');li.className='ok';li.textContent='Перевірені перетини не виявлені. Прохід ще не перевірено.';$('checks').append(li)}$('undo').disabled=index<=0;$('redo').disabled=index>=history.length-1;$('snap').checked=state.snap;$('zones').checked=state.zones}
+function svgPoint(e){return new DOMPoint(e.clientX,e.clientY).matrixTransform($('plan').getScreenCTM().inverse())}
+$('plan').addEventListener('pointerdown',e=>{const target=e.target.closest('[data-item]');if(!target||e.button!==0)return;e.preventDefault();state.selected=target.dataset.item;drag={key:state.selected,p:svgPoint(e),layout:copy(state.layout),before:JSON.stringify(state.layout),pointer:e.pointerId};$('plan').setPointerCapture(e.pointerId);render()});
+$('plan').addEventListener('pointermove',e=>{if(!drag||drag.pointer!==e.pointerId)return;const p=svgPoint(e),dx=p.x-drag.p.x,dy=p.y-drag.p.y,k=drag.key;state.layout=copy(drag.layout);if(k==='door'){let n=drag.layout.door.d_mm+dy;if(state.snap)n=Math.round(n/50)*50;state.layout.door.d_mm=Math.max(250,Math.min(1970,n))}else moveRect(k,drag.layout[k].x0-dx,drag.layout[k].y0+dy);derive();render()});
+$('plan').addEventListener('pointerup',e=>{if(!drag)return;const changed=JSON.stringify(state.layout)!==drag.before;drag=null;if($('plan').hasPointerCapture(e.pointerId))$('plan').releasePointerCapture(e.pointerId);if(changed)commit();else render()});$('plan').addEventListener('pointercancel',()=>{if(drag){state.layout=drag.layout;drag=null;derive();render()}});
+document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>{state.selected=b.dataset.select;render()});$('rotate').onclick=rotateSelected;$('undo').onclick=()=>restore(index-1);$('redo').onclick=()=>restore(index+1);$('preset').onchange=e=>loadPreset(e.target.value);$('reset').onclick=()=>{if(confirm('Скинути поточний план до початкового пресета? Збережені варіанти залишаться.'))loadPreset(state.preset)};
+for(const id of ['posX','posY','sizeX','sizeY'])$(id).onchange=()=>{const n=Number($(id).value)*10,k=state.selected;if(k==='door')return;const a=state.layout[k],w=a.x1-a.x0,h=a.y1-a.y0;if(!Number.isFinite(n)||((id==='sizeX'||id==='sizeY')&&n<=0)||(id==='sizeX'&&n>NX)||(id==='sizeY'&&n>NY)){toast('Введи коректний розмір у сантиметрах');render();return}if(id==='posX')Object.assign(a,clampRect(box(NX-n-w,a.y0,NX-n,a.y1),{nx:NX,ny:NY}));if(id==='posY')Object.assign(a,clampRect(box(a.x0,n,a.x1,n+h),{nx:NX,ny:NY}));if(id==='sizeX')Object.assign(a,clampRect(box(a.x1-n,a.y0,a.x1,a.y1),{nx:NX,ny:NY}));if(id==='sizeY')Object.assign(a,clampRect(box(a.x0,a.y0,a.x1,a.y0+n),{nx:NX,ny:NY}));commit()};
+for(const id of ['doorPos','doorSlide','doorDirection','doorHinge'])$(id).onchange=()=>{let d=Number($('doorPos').value)*10;if(id==='doorSlide')d=Number($('doorSlide').value)*10;if(!Number.isFinite(d))return;state.layout.door.d_mm=Math.max(250,Math.min(1970,d));state.layout.door.swing=$('doorDirection').value+$('doorHinge').value;commit()};$('buffer').onchange=()=>{const n=Number($('buffer').value);if(!Number.isFinite(n))return;state.buffer=Math.max(0,Math.min(1500,n*10));commit()};$('snap').onchange=()=>{state.snap=$('snap').checked;persist()};$('zones').onchange=()=>{state.zones=$('zones').checked;persist();render()};$('zoomIn').onclick=()=>{state.zoom=Math.min(3,state.zoom*1.2);render()};$('zoomOut').onclick=()=>{state.zoom=Math.max(.5,state.zoom/1.2);render()};$('fit').onclick=()=>{state.zoom=1;render()};
+document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;const ctrl=e.ctrlKey||e.metaKey;if(ctrl&&e.key.toLowerCase()==='z'){e.preventDefault();restore(index+(e.shiftKey?1:-1));return}if(ctrl&&e.key.toLowerCase()==='y'){e.preventDefault();restore(index+1);return}if(!ctrl&&e.code==='KeyR'){e.preventDefault();rotateSelected();return}if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();const n=e.shiftKey?100:10,k=state.selected,dx=e.key==='ArrowLeft'?n:e.key==='ArrowRight'?-n:0,dy=e.key==='ArrowUp'?-n:e.key==='ArrowDown'?n:0;if(k==='door'){state.layout.door.d_mm=Math.max(250,Math.min(1970,state.layout.door.d_mm+dy))}else{const a=state.layout[k];Object.assign(a,clampRect(box(a.x0+dx,a.y0+dy,a.x1+dx,a.y1+dy),{nx:NX,ny:NY}))}commit()});
+function download(name,body,type){const url=URL.createObjectURL(new Blob([body],{type})),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+function exportData(){return{format:'remont-room-v1',room:{nx:NX,ny:NY},layout:copy(state.layout),buffer:state.buffer,notice:'Ручний план. Перетини не доводять прохідність або теплову безпеку.'}}
+$('exportJSON').onclick=()=>download('my-room-plan.json',JSON.stringify(exportData(),null,2),'application/json');$('exportSVG').onclick=()=>{const clone=$('plan').cloneNode(true);clone.setAttribute('xmlns',NS);clone.setAttribute('viewBox','-1100 -280 4150 3770');clone.setAttribute('width','1500');clone.setAttribute('height','1363');download('my-room-plan.svg',new XMLSerializer().serializeToString(clone),'image/svg+xml')};$('importJSON').onclick=()=>$('fileInput').click();function importData(data){const l=copy(data.layout||data);validLayout(l);state.layout=l;if(Number.isFinite(data.buffer))state.buffer=Math.max(0,Math.min(1500,data.buffer));commit()}
+$('fileInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(f.size>1000000)throw Error('Файл завеликий');importData(JSON.parse(await f.text()));toast('План імпортовано')}catch(err){toast('Не імпортовано: '+err.message)}e.target.value=''};
+function renderSaved(){const s=$('savedVariants');s.replaceChildren(new Option('Оберіть варіант',''));saved.forEach((v,i)=>s.add(new Option(v.name,String(i))))}
+$('saveVariant').onclick=()=>{const name=$('variantName').value.trim();if(!name){toast('Вкажи назву варіанта');return}if(saved.length>=50){toast('Ліміт 50 варіантів; експортуй або видали зайві');return}saved.push({name:name.slice(0,80),...snapshot()});persist();renderSaved();$('savedVariants').value=String(saved.length-1);toast('Варіант збережено')};$('loadVariant').onclick=()=>{const i=$('savedVariants').value;if(i==='')return;Object.assign(state,copy(saved[Number(i)]));commit();toast('Варіант відкрито')};$('deleteVariant').onclick=()=>{const i=$('savedVariants').value;if(i===''||!confirm('Видалити цей збережений варіант?'))return;saved.splice(Number(i),1);persist();renderSaved()};
+state.layout=copy(PRESETS['concept-02']);try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&v.version===1){validLayout(v.layout);state.layout=v.layout;state.preset=PRESETS[v.preset]?v.preset:'concept-02';state.buffer=Number.isFinite(v.buffer)?Math.max(0,Math.min(v.buffer,1500)):300;state.snap=v.snap!==false;state.zones=v.zones!==false;saved=Array.isArray(v.saved)?v.saved.filter(s=>{try{validLayout(s.layout);return typeof s.name==='string'}catch{return false}}).slice(0,50):[]}}catch{}derive();history=[snapshot()];index=0;renderSaved();render();
+window.roomEditor={getState:()=>({...snapshot(),selected:state.selected,snap:state.snap,zones:state.zones,zoom:state.zoom,historyLength:history.length,historyIndex:index,checks:checks()}),getLayout:()=>copy(state.layout),loadPreset,importData,exportData,checkCollisions:()=>checks(),undo:()=>restore(index-1),redo:()=>restore(index+1)};
+
+</script><script>class GitHubConcepts {
+ #token='';
+ constructor({fetch:fetcher=globalThis.fetch}={}){this.fetch=fetcher;this.base='https://api.github.com/repos/vossapov/room-planner/contents/concepts'}
+ connect(token){this.#token=String(token).trim()}
+ disconnect(){this.#token=''}
+ get connected(){return Boolean(this.#token)}
+ async request(path='',options={}){const headers={Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...options.headers};if(this.#token)headers.Authorization='Bearer '+this.#token;const r=await this.fetch(this.base+path,{...options,headers,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(20000)});if(!r.ok){const messages={401:'Ключ недійсний або прострочений',403:'Немає дозволу або вичерпано ліміт GitHub',404:'Репозиторій чи концепт недоступний',409:'Конфлікт версій. Збережи як новий концепт',422:'GitHub відхилив запис. Спробуй нову назву'};throw Error(messages[r.status]||'GitHub: HTTP '+r.status)}return r.json()}
+ validName(filename){if(typeof filename!=='string'||filename.includes('..')||!/^[\p{L}\p{N}][\p{L}\p{N}._-]{0,140}\.json$/u.test(filename))throw Error('Некоректне ім’я концепту');return filename}
+ async list(){const rows=await this.request('?ref=main');if(!Array.isArray(rows))throw Error('Некоректна бібліотека');return rows.filter(r=>r.type==='file'&&r.name.endsWith('.json')).sort((a,b)=>a.name.localeCompare(b.name))}
+ async load(filename){this.validName(filename);const r=await this.request('/'+encodeURIComponent(filename)+'?ref=main');const bytes=Uint8Array.from(atob(r.content.replace(/\s/g,'')),c=>c.charCodeAt(0));return JSON.parse(new TextDecoder().decode(bytes))}
+ async save(filename,document){this.validName(filename);if(!this.connected)throw Error('Підключи ключ GitHub для запису');const content=btoa(Array.from(new TextEncoder().encode(JSON.stringify(document))).map(x=>String.fromCharCode(x)).join(''));await this.request('/'+encodeURIComponent(filename),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'Save concept: '+String(document.name||filename).slice(0,80),content,branch:'main'})});const actual=await this.load(filename);if(JSON.stringify(actual)!==JSON.stringify(document))throw Error('Запис не підтверджено читанням GitHub');return actual}
+}
+</script><script>(()=>{
+const cloud=new GitHubConcepts(),by=id=>document.getElementById(id);let busy=false;
+function status(message){by('cloudStatus').textContent=message}
+function lock(value){busy=value;for(const id of ['cloudSave','cloudLoad','cloudRefresh','cloudConnect','cloudDisconnect'])by(id).disabled=value}
+async function refresh(){const rows=await cloud.list();const select=by('cloudList'),previous=select.value;select.replaceChildren(new Option('Оберіть концепт',''));for(const row of rows)select.add(new Option(row.name.replace(/\.json$/,'').replace(/--[a-f0-9-]+$/,''),row.name));if(rows.some(x=>x.name===previous))select.value=previous;status('На GitHub: '+rows.length+' концептів. '+(cloud.connected?'Ключ підключено в цій вкладці.':'Читання без входу; для запису підключи ключ.'));return rows}
+async function action(fn){if(busy)return;lock(true);try{await fn()}catch(e){status(e.message);toast(e.message)}finally{lock(false)}}
+by('cloudRefresh').onclick=()=>action(refresh);
+by('cloudConnect').onclick=()=>action(async()=>{const input=by('cloudToken'),token=input.value.trim();input.value='';if(!token)throw Error('Встав fine-grained ключ лише для room-planner');cloud.connect(token);try{await refresh();by('cloudAccess').open=false}catch(e){cloud.disconnect();throw e}});
+by('cloudDisconnect').onclick=()=>{cloud.disconnect();by('cloudToken').value='';status('Ключ видалено з пам’яті вкладки. Публічні концепти залишаються доступними.')};
+by('cloudLoad').onclick=()=>action(async()=>{const filename=by('cloudList').value;if(!filename)throw Error('Спочатку обери концепт');const doc=await cloud.load(filename);window.roomEditor.importData(doc);by('cloudName').value=doc.name||filename.replace(/\.json$/,'');status('Відкрито з GitHub: '+by('cloudName').value)});
+by('cloudSave').onclick=()=>action(async()=>{if(!cloud.connected){by('cloudAccess').open=true;throw Error('Підключи ключ GitHub у розділі доступу нижче')}const name=by('cloudName').value.trim();if(!name)throw Error('Дай концепту назву');const slug=name.normalize('NFKC').replace(/[^\p{L}\p{N}_-]+/gu,'-').replace(/^-+|-+$/g,'').slice(0,60)||'concept';const filename=slug+'--'+crypto.randomUUID()+'.json';const doc={...window.roomEditor.exportData(),name:name.slice(0,80),savedAt:new Date().toISOString()};status('Збереження на GitHub…');await cloud.save(filename,doc);await refresh();by('cloudList').value=filename;status('Збережено на GitHub і перевірено: '+doc.name);toast('Концепт збережено на GitHub')});
+// Token stays in a private JS field, never in storage, exports, or the repository.
+window.addEventListener('pagehide',()=>cloud.disconnect());
+action(refresh);
+})();
+</script></body></html>
