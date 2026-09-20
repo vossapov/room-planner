@@ -29,27 +29,44 @@ for(const k of ['bed','desk','storage','tv']){const a=l[k],selected=k===state.se
 const d=l.door,h=d.hinge_mm,o=d.leaf_open,c=d.leaf_closed,top=d.swing.endsWith('Left'),outward=d.swing.startsWith('Out'),start={x:h[0],y:h[1]+(top?800:-800)},end={x:h[0]+(outward?800:-800),y:h[1]},flag=outward===top?1:0;
 out+=`<g data-item="door" tabindex="0" aria-label="Двері">${svgRect(d.rough,'transparent','transparent','stroke-width="15"')}${line(NX-start.x,start.y,NX-h[0],h[1],'#97a1a5',5,'stroke-dasharray="20 15"')}<path d="M${NX-start.x} ${start.y} A800 800 0 0 ${flag} ${NX-end.x} ${end.y}" fill="none" stroke="${state.selected==='door'?'#9064bd':'#83939f'}" stroke-width="8"/>${svgRect(o,'#778696',report.bad.includes('door')?'#bd5d59':'#52697a','stroke-width="7"')}<circle cx="${NX-h[0]}" cy="${h[1]}" r="20" fill="#586c7d"/></g>`;svg.innerHTML=out;$('zoomLabel').textContent=Math.round(state.zoom*100)+'%'}
 
-const HEIGHT={bed:420,desk:740,storage:550,tv:60,door:2050},BASE={tv:1100},ROOM={nx:NX,ny:NY},WALL=2500;
-const ISO_FILL={bed:['#e7d3ae','#c9b28a','#ab9673'],desk:['#bfd5df','#9db6c2','#83a0ae'],storage:['#d8ccb8','#b8ab96','#9c8f7c'],tv:['#4c5f72','#3b4c5c','#2f3d4a'],door:['#8d9aa6','#6f7d8a','#5b6873'],conv:['#dfa98d','#c28e74','#a87a62']};
+const ROOM={nx:NX,ny:NY},WALL=2500,WALL_T=60;
+const ISO_FILL={bed:['#e7d3ae','#cbb188','#ad9670'],desk:['#bfd5df','#9db6c2','#83a0ae'],storage:['#d8ccb8','#b8ab96','#9c8f7c'],tv:['#2f3a45','#222b34','#1a2129'],door:['#93a0ac','#74828f','#5f6c78'],conv:['#dfa98d','#c28e74','#a87a62'],headboard:['#f6ecd8','#d8c9a9','#bdae90']};
+// Balcony passage and small window are fixed shell openings; the door moves with d_mm.
+const OPENINGS={right:[{from:0,to:880,z0:0,z1:2100,kind:'balcony'}],left:[{from:2710,to:3060,z0:900,z1:2100,kind:'window'}]};
 let isoBounds=null;
-function isoTrack(points){for(const p of points){if(!isoBounds)isoBounds={minX:p.sx,maxX:p.sx,minY:p.sy,maxY:p.sy};else{isoBounds.minX=Math.min(isoBounds.minX,p.sx);isoBounds.maxX=Math.max(isoBounds.maxX,p.sx);isoBounds.minY=Math.min(isoBounds.minY,p.sy);isoBounds.maxY=Math.max(isoBounds.maxY,p.sy)}}}
-function isoPoly(points,fill,extra=''){isoTrack(points);return`<polygon points="${points.map(p=>p.sx.toFixed(1)+','+p.sy.toFixed(1)).join(' ')}" fill="${fill}" stroke="#141519" stroke-width="7" stroke-linejoin="round" ${extra}/>`}
-function isoSolid(rect,height,base,fill,turns,selected,key){const b=isoBoxFaces(rect,height,base||0,turns,ROOM);const tag=key?' data-solid="'+key+'"':'';let out='';b.sides.forEach((f,i)=>{out+=isoPoly(f.points,fill[i===0?1:2],tag)});out+=isoPoly(b.top.points,fill[0],tag+(selected?' stroke="#c3a1ea" stroke-width="16"':''));return{svg:out,depth:b.depth}}
+function isoTrack(pts){for(const p of pts){if(!isoBounds)isoBounds={minX:p.sx,maxX:p.sx,minY:p.sy,maxY:p.sy};else{isoBounds.minX=Math.min(isoBounds.minX,p.sx);isoBounds.maxX=Math.max(isoBounds.maxX,p.sx);isoBounds.minY=Math.min(isoBounds.minY,p.sy);isoBounds.maxY=Math.max(isoBounds.maxY,p.sy)}}}
+function isoPoly(points,fill,extra=''){isoTrack(points);return`<polygon points="${points.map(p=>p.sx.toFixed(1)+','+p.sy.toFixed(1)).join(' ')}" fill="${fill}" stroke="#15161a" stroke-width="6" stroke-linejoin="round" ${extra}/>`}
+function isoSolid(rect,height,base,fill,turns,selected,key){const b=isoBoxFaces(rect,height,base||0,turns,ROOM),tag=key?` data-solid="${key}"`:'';let out='';b.sides.forEach((f,i)=>{out+=isoPoly(f.points,fill[i===0?1:2],tag)});out+=isoPoly(b.top.points,fill[0],tag+(selected?' stroke="#c3a1ea" stroke-width="15"':''));return out}
+function wallRect(side,from,to){return side==='top'?{x0:from,y0:0,x1:to,y1:WALL_T}:side==='bottom'?{x0:from,y0:NY-WALL_T,x1:to,y1:NY}:side==='left'?{x0:0,y0:from,x1:WALL_T,y1:to}:{x0:NX-WALL_T,y0:from,x1:NX,y1:to}}
+function wallSpan(side){return side==='top'||side==='bottom'?{from:0,to:NX}:{from:0,to:NY}}
+function drawWall(side,turns,openings){const span=wallSpan(side);let out='';
+ for(const p of isoWallPanels({...span,height:WALL},openings||[]))out+=isoSolid(wallRect(side,p.from,p.to),p.z1-p.z0,p.z0,['#c6c9d0','#b4b8c1','#a3a7b1'],turns,false,null).replace(/data-solid="[^"]*"/g,'')
+ return out}
+function wallDepth(side,turns){const r=isoRotateRect(wallRect(side,...Object.values(wallSpan(side))),turns,ROOM);return (NX-r.x0)+r.y1}
 function renderIso(){const svg=$('iso');if(!svg)return;const l=state.layout,turns=state.isoTurn|0;isoBounds=null;
- const floor=isoBoxFaces({x0:0,y0:0,x1:NX,y1:NY},0,0,turns,ROOM);
- let out=isoPoly(floor.top.points,'#e8e7e2','stroke="#2a2c32" stroke-width="9"');
- const corners=[{x0:0,y0:0,x1:NX,y1:60},{x0:0,y0:NY-60,x1:NX,y1:NY},{x0:0,y0:0,x1:60,y1:NY},{x0:NX-60,y0:0,x1:NX,y1:NY}];
- const walls=corners.map((r,i)=>{const b=isoBoxFaces(r,WALL,0,turns,ROOM),tag=' data-wall="'+i+'"';return{depth:b.depth,svg:isoPoly(b.top.points,'#b9bcc4',tag)+b.sides.map(f=>isoPoly(f.points,'#cdd0d6',tag)).join('')}}).sort((a,b)=>a.depth-b.depth);
- out+=walls.slice(0,2).map(w=>w.svg).join('');
- const items=[{r:conv,h:600,b:0,f:ISO_FILL.conv,k:'conv'}];
- for(const k of ['bed','desk','storage','tv'])items.push({r:l[k],h:HEIGHT[k],b:BASE[k]||0,f:ISO_FILL[k],k});
- items.push({r:l.door.leaf_open,h:HEIGHT.door,b:0,f:ISO_FILL.door,k:'door'});
- const drawn=items.map(it=>{const s=isoSolid(it.r,it.h,it.b,it.f,turns,it.k===state.selected,it.k);return{depth:s.depth,svg:s.svg}}).sort((a,b)=>a.depth-b.depth);
- out+=drawn.map(d=>d.svg).join('');
- if(l.bed.head_end){const b=l.bed,head=b.head_end==='x0'?{x0:b.x0,y0:b.y0,x1:b.x0+120,y1:b.y1}:b.head_end==='x1'?{x0:b.x1-120,y0:b.y0,x1:b.x1,y1:b.y1}:b.head_end==='y0'?{x0:b.x0,y0:b.y0,x1:b.x1,y1:b.y0+120}:{x0:b.x0,y0:b.y1-120,x1:b.x1,y1:b.y1};
-  out+=isoSolid(head,900,0,['#f6ecd8','#d8c9a9','#bdae90'],turns,false,'headboard').svg}
+ const doorHole=[{from:l.door.d_mm,to:l.door.d_mm+900,z0:0,z1:2100,kind:'door'}];
+ const sides=[{side:'top',op:OPENINGS.top},{side:'left',op:OPENINGS.left},{side:'bottom',op:[]},{side:'right',op:OPENINGS.right.concat(doorHole)}]
+   .map(w=>({...w,depth:wallDepth(w.side,turns)})).sort((a,b)=>a.depth-b.depth);
+ let out=isoPoly(isoBoxFaces({x0:0,y0:0,x1:NX,y1:NY},0,0,turns,ROOM).top.points,'#e9e8e3','stroke="#2a2c32" stroke-width="8"');
+ for(const w of sides.slice(0,2))out+=`<g data-wall="${w.side}">${drawWall(w.side,turns,w.op)}</g>`;
+ for(const g of [{r:{x0:NX-WALL_T,y0:0,x1:NX,y1:880},f:'#79818c',t:'balcony'},{r:{x0:0,y0:2710,x1:WALL_T,y1:3060},f:'#8fbdd4',t:'window'},{r:{x0:NX-WALL_T,y0:l.door.d_mm,x1:NX,y1:Math.min(NY,l.door.d_mm+900)},f:'#646c76',t:'doorway'}])
+  out+=isoPoly(isoBoxFaces(g.r,0,12,turns,ROOM).top.points,g.f,`data-opening="${g.t}"`);
+ // A wall-mounted item keeps a backing strip even when its wall is culled, so it never floats.
+ const tvWall=l.tv.y1<=NY/2?'top':l.tv.y0>=NY/2?'bottom':l.tv.x1<=NX/2?'left':'right';
+ const tvBack=tvWall==='top'?{x0:l.tv.x0-120,y0:0,x1:l.tv.x1+120,y1:WALL_T}:tvWall==='bottom'?{x0:l.tv.x0-120,y0:NY-WALL_T,x1:l.tv.x1+120,y1:NY}:tvWall==='left'?{x0:0,y0:l.tv.y0-120,x1:WALL_T,y1:l.tv.y1+120}:{x0:NX-WALL_T,y0:l.tv.y0-120,x1:NX,y1:l.tv.y1+120};
+ const clampRectRoom=r=>({x0:Math.max(0,r.x0),y0:Math.max(0,r.y0),x1:Math.min(NX,r.x1),y1:Math.min(NY,r.y1)});
+ // A screen on a culled near wall would hang between the viewer and the room: omit it for that corner.
+ const drawnWalls=sides.slice(0,2).map(w=>w.side),showTv=drawnWalls.includes(tvWall);
+ const items=[{key:'conv',rect:conv},{key:'bed',rect:l.bed},{key:'desk',rect:l.desk},{key:'storage',rect:l.storage},{key:'door',rect:l.door.leaf_open}];
+ if(showTv)items.push({key:'tv',rect:l.tv});
+ for(const it of isoDepthSort(items,turns,ROOM)){
+  const h=FURNITURE_HEIGHT[it.key]||{height:400,base:0};
+  if(it.key==='tv')out+=isoSolid(clampRectRoom(tvBack),FURNITURE_HEIGHT.tv.base+FURNITURE_HEIGHT.tv.height+150,0,['#bcc0c8','#aaaeb7','#9a9ea8'],turns,false,'tvback').replace(/data-solid="tvback"/g,'data-backing="tv"');
+  out+=isoSolid(it.rect,h.height,h.base,ISO_FILL[it.key],turns,it.key===state.selected,it.key);
+  if(it.key==='bed'){const b=l.bed,hd=b.head_end==='x0'?{x0:b.x0,y0:b.y0,x1:b.x0+120,y1:b.y1}:b.head_end==='x1'?{x0:b.x1-120,y0:b.y0,x1:b.x1,y1:b.y1}:b.head_end==='y0'?{x0:b.x0,y0:b.y0,x1:b.x1,y1:b.y0+120}:{x0:b.x0,y0:b.y1-120,x1:b.x1,y1:b.y1};
+   out+=isoSolid(hd,900,0,ISO_FILL.headboard,turns,false,'headboard')}}
  svg.innerHTML=out;
- const pad=120,b=isoBounds||{minX:-1,maxX:1,minY:-1,maxY:1};
+ const pad=140,b=isoBounds||{minX:-1,maxX:1,minY:-1,maxY:1};
  svg.setAttribute('viewBox',`${b.minX-pad} ${b.minY-pad} ${b.maxX-b.minX+pad*2} ${b.maxY-b.minY+pad*2}`);
  $('isoAngle').textContent='кут '+(turns+1)+' з 4';
 }

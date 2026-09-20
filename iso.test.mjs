@@ -50,3 +50,46 @@ test('published editor exposes both projections and rotation controls',()=>{
  for(const id of ['plan','iso','isoRotateLeft','isoRotateRight','isoAngle'])assert.ok(html.includes('id="'+id+'"'),id+' missing');
  assert.ok(html.includes('isoProject'),'iso geometry must be embedded');
 });
+
+const CONCEPT=JSON.parse(fs.readFileSync(new URL('./presets/concept-02.json',import.meta.url),'utf8'));
+test('isoDepthSort paints separated objects strictly back to front at every corner',()=>{
+ assert.equal(typeof mod.isoDepthSort,'function','isoDepthSort missing');
+ const items=[{key:'bed',rect:CONCEPT.bed},{key:'desk',rect:CONCEPT.desk},{key:'storage',rect:CONCEPT.storage},{key:'tv',rect:CONCEPT.tv},{key:'conv',rect:{x0:0,y0:0,x1:250,y1:750}}];
+ for(let turns=0;turns<4;turns++){
+  const order=mod.isoDepthSort(items,turns,room);
+  assert.equal(order.length,items.length,'no object may be dropped');
+  const index=Object.fromEntries(order.map((o,i)=>[o.key,i]));
+  for(const a of items)for(const b of items){
+   if(a.key===b.key)continue;
+   const ra=mod.isoRotateRect(a.rect,turns,room),rb=mod.isoRotateRect(b.rect,turns,room);
+   const aFar=(room.nx-ra.x0)<=(room.nx-rb.x1)||ra.y1<=rb.y0;
+   const bFar=(room.nx-rb.x0)<=(room.nx-ra.x1)||rb.y1<=ra.y0;
+   if(aFar&&!bFar)assert.ok(index[a.key]<index[b.key],`turn ${turns}: ${a.key} is behind ${b.key} and must be drawn first`);
+  }
+ }
+});
+test('the television is a vertical panel hung on the wall, not a flat slab',()=>{
+ assert.ok(mod.FURNITURE_HEIGHT,'FURNITURE_HEIGHT missing');
+ const tv=mod.FURNITURE_HEIGHT.tv;
+ assert.ok(tv.height>=500,'a 1200 mm television must be at least 500 mm tall, got '+tv.height);
+ assert.ok(tv.base>=900,'the television hangs above the floor');
+ assert.ok(tv.height>Math.abs(CONCEPT.tv.y1-CONCEPT.tv.y0),'height must exceed the 60 mm panel thickness');
+});
+test('wall openings cut real holes with sill, lintel and side panels',()=>{
+ assert.equal(typeof mod.isoWallPanels,'function','isoWallPanels missing');
+ const panels=mod.isoWallPanels({from:0,to:3120,height:2500},[{from:250,to:1150,z0:0,z1:2100}]);
+ assert.ok(panels.length>=2,'a door must leave side panels and a lintel');
+ for(const p of panels)assert.ok(p.to>p.from&&p.z1>p.z0,'panels must be real rectangles');
+ const covers=(a,b)=>panels.some(p=>p.from<=a&&p.to>=b);
+ assert.ok(covers(0,250)&&covers(1150,3120),'wall continues on both sides of the opening');
+ assert.ok(panels.some(p=>p.from<=250&&p.to>=1150&&p.z0>=2100),'lintel above the door');
+ assert.ok(!panels.some(p=>p.from<1150&&p.to>250&&p.z0<2100&&p.z1>0&&p.from>=250&&p.to<=1150),'no panel inside the doorway');
+ const win=mod.isoWallPanels({from:0,to:3120,height:2500},[{from:2710,to:3060,z0:900,z1:2100}]);
+ assert.ok(win.some(p=>p.from<=2710&&p.to>=3060&&p.z1<=900),'window keeps a sill below the glass');
+ assert.ok(win.some(p=>p.from<=2710&&p.to>=3060&&p.z0>=2100),'window keeps a lintel above the glass');
+});
+test('built page renders wall openings and marks assumed heights',()=>{
+ const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
+ assert.ok(html.includes('isoWallPanels')&&html.includes('isoDepthSort'),'fixed geometry must be embedded');
+ assert.ok(/припущен/i.test(html),'assumed opening heights must be disclosed to the user');
+});

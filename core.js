@@ -314,3 +314,51 @@ export function isoBoxFaces(rect,height,base,turns,room){
   return {top:{points:top,depth:Math.max(...top.map(p=>p.depth))},sides:visible,
     depth:Math.max(...bottom.map(p=>p.depth))};
 }
+
+export const FURNITURE_HEIGHT={
+  bed:{height:420,base:0},desk:{height:740,base:0},storage:{height:550,base:0},
+  tv:{height:680,base:1100},door:{height:2050,base:0},conv:{height:600,base:0}};
+
+export function isoRotateRect(rect,turns,room){
+  const a=isoRotate(rect.x0,rect.y0,turns,room),b=isoRotate(rect.x1,rect.y1,turns,room);
+  return {x0:Math.min(a.x,b.x),y0:Math.min(a.y,b.y),x1:Math.max(a.x,b.x),y1:Math.max(a.y,b.y)};
+}
+
+export function isoDepthSort(items,turns,room){
+  // Painter order for separated axis-aligned boxes: an object strictly behind
+  // another on either screen axis must be drawn first. Topological, not a sum.
+  const boxes=items.map(it=>({...it,r:isoRotateRect(it.rect,turns,room)}));
+  const behind=(a,b)=>((room.nx-a.r.x0)<=(room.nx-b.r.x1))||(a.r.y1<=b.r.y0);
+  const n=boxes.length,edges=boxes.map(()=>[]),indegree=new Array(n).fill(0);
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){
+    if(i===j)continue;
+    if(behind(boxes[i],boxes[j])&&!behind(boxes[j],boxes[i])){edges[i].push(j);indegree[j]++}
+  }
+  const key=i=>(room.nx-boxes[i].r.x1)+boxes[i].r.y0;
+  const ready=[];for(let i=0;i<n;i++)if(!indegree[i])ready.push(i);
+  const out=[];
+  while(ready.length){
+    ready.sort((a,b)=>key(a)-key(b));
+    const i=ready.shift();out.push(boxes[i]);
+    for(const j of edges[i])if(--indegree[j]===0)ready.push(j);
+  }
+  for(let i=0;i<n;i++)if(!out.includes(boxes[i]))out.push(boxes[i]);
+  return out;
+}
+
+export function isoWallPanels(wall,openings){
+  // Split a wall into solid rectangles around openings: side panels, sills, lintels.
+  const holes=(openings||[]).filter(o=>o.to>wall.from&&o.from<wall.to)
+    .map(o=>({from:Math.max(o.from,wall.from),to:Math.min(o.to,wall.to),
+              z0:Math.max(0,o.z0),z1:Math.min(wall.height,o.z1)}))
+    .sort((a,b)=>a.from-b.from);
+  const panels=[];let cursor=wall.from;
+  for(const h of holes){
+    if(h.from>cursor)panels.push({from:cursor,to:h.from,z0:0,z1:wall.height});
+    if(h.z0>0)panels.push({from:h.from,to:h.to,z0:0,z1:h.z0});
+    if(h.z1<wall.height)panels.push({from:h.from,to:h.to,z0:h.z1,z1:wall.height});
+    cursor=Math.max(cursor,h.to);
+  }
+  if(cursor<wall.to)panels.push({from:cursor,to:wall.to,z0:0,z1:wall.height});
+  return panels.filter(p=>p.to>p.from&&p.z1>p.z0);
+}
