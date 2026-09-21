@@ -92,6 +92,7 @@ test('built page renders wall openings and marks assumed heights',()=>{
  const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
  assert.ok(html.includes('isoWallPanels')&&html.includes('isoDepthSort'),'fixed geometry must be embedded');
  assert.ok(/припущен/i.test(html),'assumed opening heights must be disclosed to the user');
+ assert.ok(/id="isoAngle"/.test(html));
 });
 
 test('the shell only has openings that exist inside this room',()=>{
@@ -140,4 +141,24 @@ test('openings are filled surfaces, never see-through voids',()=>{
  assert.ok(faces.length>=4,'reveal must close the hole on both faces of the wall');
  const spans=faces.map(f=>{const xs=f.points.map(p=>p.sx),ys=f.points.map(p=>p.sy);return [Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys)]});
  assert.ok(spans.filter(([w,h])=>w>50&&h>50).length>=2,'at least the near and far planes must be full surfaces');
+});
+
+test('the isometric drops the door leaf and keeps only the opening',()=>{
+ const js=fs.readFileSync(new URL('./editor.js',import.meta.url),'utf8');
+ const iso=js.slice(js.indexOf('function renderIso'),js.indexOf("$('isoRotateLeft')"));
+ assert.ok(!/leaf_open/.test(iso),'renderIso must not draw the swinging leaf');
+ assert.ok(/doorway/.test(iso),'the doorway itself stays');
+});
+test('the screen is a flat panel with no structure reaching the floor',()=>{
+ const js=fs.readFileSync(new URL('./editor.js',import.meta.url),'utf8');
+ assert.ok(!/data-backing="tv"/.test(js),'the floor-height backing slab must be gone');
+ const tv=mod.FURNITURE_HEIGHT.tv;
+ assert.ok(tv.base>=900&&tv.height>=500,'screen keeps a wall-mounted height');
+ assert.ok(/isoWallPanel\b/.test(js)||/isoFlatPanel/.test(js),'screen drawn as a flat wall panel');
+});
+test('the layout puts the isometric in a square window beside the plan',()=>{
+ const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
+ const css=html.slice(0,html.indexOf('</style>'));
+ assert.ok(/\.views\{[^}]*grid-template-columns/.test(css),'views must be side by side, not stacked');
+ assert.ok(/aspect-ratio\s*:\s*1/.test(css),'the isometric window is square');
 });

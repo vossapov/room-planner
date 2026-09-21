@@ -390,3 +390,12 @@ export function isoOpeningReveal(op,wall,turns,room){
   out.push({points:isoBoxFaces(sill,0,op.z1,turns,room).top.points,depth:0});
   return out;
 }
+
+export function isoFlatPanel(rect,z0,z1,turns,room){
+  // A zero-thickness surface on a wall: a screen, a poster, a glazing pane.
+  const along=(rect.x1-rect.x0)<=(rect.y1-rect.y0)
+    ? [[rect.x0,rect.y0],[rect.x0,rect.y1]] : [[rect.x0,rect.y0],[rect.x1,rect.y0]];
+  const lo=along.map(([x,y])=>isoProject(x,y,z0,turns,room));
+  const hi=along.map(([x,y])=>isoProject(x,y,z1,turns,room));
+  return {points:[lo[0],lo[1],hi[1],hi[0]],depth:(lo[0].depth+lo[1].depth)/2};
+}

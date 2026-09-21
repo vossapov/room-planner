@@ -46,34 +46,32 @@ function renderIso(){const svg=$('iso');if(!svg)return;const l=state.layout,turn
  const doorHole=[{from:l.door.d_mm,to:l.door.d_mm+900,z0:0,z1:2100,kind:'door'}];
  const sides=[{side:'top',op:ROOM_SHELL.openings.top},{side:'left',op:ROOM_SHELL.openings.left},{side:'bottom',op:ROOM_SHELL.openings.bottom},{side:'right',op:doorHole}]
    .map(w=>({...w,depth:wallDepth(w.side,turns)})).sort((a,b)=>a.depth-b.depth);
+ const drawn=sides.slice(0,2).map(w=>w.side);
  let out=isoPoly(isoBoxFaces({x0:0,y0:0,x1:NX,y1:NY},0,0,turns,ROOM).top.points,'#e9e8e3','stroke="#2a2c32" stroke-width="8"');
  for(const w of sides.slice(0,2))out+=`<g data-wall="${w.side}">${drawWall(w.side,turns,w.op)}</g>`;
-  const drawn=sides.slice(0,2).map(w=>w.side);
- // Recesses are shallow pockets in a wall: show them only while that wall is on screen.
- for(const rc of ROOM_SHELL.recesses)if(drawn.includes(rc.side))
-  out+=isoSolid(wallRect(rc.side,rc.from,rc.to),rc.z1-rc.z0,rc.z0,['#aeb2bb','#9da1aa','#8d919a'],turns,false,'niche').replace(/data-solid="niche"/g,'data-recess="niche"');
- const shellOps=[{side:'left',...(ROOM_SHELL.openings.left[0]||{}),t:'window',f:['#cfe6f1','#b4d3e2','#9dc2d4']},{side:'right',from:l.door.d_mm,to:l.door.d_mm+900,z0:0,z1:2100,t:'doorway',f:'#9aa2ac'}];
- for(const g of shellOps){if(!drawn.includes(g.side)||!g.from&&g.from!==0)continue;
+ // A recess is a pocket: darker back plane plus shaded reveals, so it reads as depth.
+ for(const rc of ROOM_SHELL.recesses)if(drawn.includes(rc.side)){
+  for(const face of isoOpeningReveal({...rc,side:rc.side},rc.depth,turns,ROOM))out+=isoPoly(face.points,'#9ba0a9',`data-recess="${rc.kind}"`);
+  out+=isoPoly(isoFlatPanel(wallRect(rc.side,rc.from,rc.to),rc.z0,rc.z1,turns,ROOM).points,'#878d96',`data-recess="${rc.kind}"`)}
+ const shellOps=[{side:'left',...(ROOM_SHELL.openings.left[0]||{}),t:'window',f:'#cfe6f1'},{side:'right',from:l.door.d_mm,to:l.door.d_mm+900,z0:0,z1:2100,t:'doorway',f:'#9aa2ac'}];
+ for(const g of shellOps){if(!drawn.includes(g.side)||typeof g.from!=='number')continue;
   for(const face of isoOpeningReveal(g,WALL_T,turns,ROOM))out+=isoPoly(face.points,g.f,`data-opening="${g.t}"`)}
- // A wall-mounted item keeps a backing strip even when its wall is culled, so it never floats.
- const tvWall=l.tv.y1<=NY/2?'top':l.tv.y0>=NY/2?'bottom':l.tv.x1<=NX/2?'left':'right';
- const tvBack=tvWall==='top'?{x0:l.tv.x0-120,y0:0,x1:l.tv.x1+120,y1:WALL_T}:tvWall==='bottom'?{x0:l.tv.x0-120,y0:NY-WALL_T,x1:l.tv.x1+120,y1:NY}:tvWall==='left'?{x0:0,y0:l.tv.y0-120,x1:WALL_T,y1:l.tv.y1+120}:{x0:NX-WALL_T,y0:l.tv.y0-120,x1:NX,y1:l.tv.y1+120};
- const clampRectRoom=r=>({x0:Math.max(0,r.x0),y0:Math.max(0,r.y0),x1:Math.min(NX,r.x1),y1:Math.min(NY,r.y1)});
- // A screen on a culled near wall would hang between the viewer and the room: omit it for that corner.
- const drawnWalls=sides.slice(0,2).map(w=>w.side),showTv=drawnWalls.includes(tvWall);
- const items=[{key:'conv',rect:conv},{key:'bed',rect:l.bed},{key:'desk',rect:l.desk},{key:'storage',rect:l.storage},{key:'door',rect:l.door.leaf_open}];
- if(showTv)items.push({key:'tv',rect:l.tv});
+ const items=[{key:'conv',rect:conv},{key:'bed',rect:l.bed},{key:'desk',rect:l.desk},{key:'storage',rect:l.storage}];
  for(const it of isoDepthSort(items,turns,ROOM)){
   const h=FURNITURE_HEIGHT[it.key]||{height:400,base:0};
-  if(it.key==='tv')out+=isoSolid(clampRectRoom(tvBack),FURNITURE_HEIGHT.tv.base+FURNITURE_HEIGHT.tv.height+150,0,['#bcc0c8','#aaaeb7','#9a9ea8'],turns,false,'tvback').replace(/data-solid="tvback"/g,'data-backing="tv"');
   out+=isoSolid(it.rect,h.height,h.base,ISO_FILL[it.key],turns,it.key===state.selected,it.key);
   if(it.key==='bed'){const b=l.bed,hd=b.head_end==='x0'?{x0:b.x0,y0:b.y0,x1:b.x0+120,y1:b.y1}:b.head_end==='x1'?{x0:b.x1-120,y0:b.y0,x1:b.x1,y1:b.y1}:b.head_end==='y0'?{x0:b.x0,y0:b.y0,x1:b.x1,y1:b.y0+120}:{x0:b.x0,y0:b.y1-120,x1:b.x1,y1:b.y1};
    out+=isoSolid(hd,900,0,ISO_FILL.headboard,turns,false,'headboard')}}
+ // The screen is a flat black rectangle on its wall, drawn only when that wall is on screen.
+ const tvWall=l.tv.y1<=NY/2?'top':l.tv.y0>=NY/2?'bottom':l.tv.x1<=NX/2?'left':'right';
+ if(drawn.includes(tvWall)){const t=FURNITURE_HEIGHT.tv;
+  out+=isoPoly(isoFlatPanel(l.tv,t.base,t.base+t.height,turns,ROOM).points,'#000000',`data-solid="tv" stroke="${state.selected==='tv'?'#c3a1ea':'#0c0d10'}" stroke-width="${state.selected==='tv'?14:6}"`)}
  svg.innerHTML=out;
  const pad=140,b=isoBounds||{minX:-1,maxX:1,minY:-1,maxY:1};
  svg.setAttribute('viewBox',`${b.minX-pad} ${b.minY-pad} ${b.maxX-b.minX+pad*2} ${b.maxY-b.minY+pad*2}`);
  $('isoAngle').textContent='кут '+(turns+1)+' з 4';
 }
+
 $('isoRotateLeft').onclick=()=>{state.isoTurn=((state.isoTurn|0)+3)%4;persist();renderIso()};
 $('isoRotateRight').onclick=()=>{state.isoTurn=((state.isoTurn|0)+1)%4;persist();renderIso()};
 function render(){const report=checks();renderPlan(report);renderIso();$('preset').value=state.preset;document.querySelectorAll('[data-select]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.select===state.selected));$('selectedTitle').textContent=names[state.selected];const isDoor=state.selected==='door';$('furnitureFields').classList.toggle('hide',isDoor);$('doorFields').classList.toggle('hide',!isDoor);function val(id,n){if(document.activeElement!==$(id))$(id).value=n}if(!isDoor){const a=state.layout[state.selected];val('posX',+( (NX-a.x1)/10).toFixed(1));val('posY',+(a.y0/10).toFixed(1));val('sizeX',+((a.x1-a.x0)/10).toFixed(1));val('sizeY',+((a.y1-a.y0)/10).toFixed(1));const label={x0:'праворуч',x1:'ліворуч',y0:'угорі',y1:'унизу','-X':'праворуч','+X':'ліворуч','-Y':'угорі','+Y':'унизу'};$('orientation').textContent=state.selected==='bed'?'Узголів’я '+label[a.head_end]:state.selected==='desk'?'Крісло '+label[a.work_side]+'. Зона рухається разом зі столом.':'Розміри на плані, не висота предмета.'}val('doorPos',state.layout.door.d_mm/10);val('doorSlide',state.layout.door.d_mm/10);val('doorDirection',state.layout.door.swing.startsWith('In')?'In':'Out');val('doorHinge',state.layout.door.swing.endsWith('Left')?'Left':'Right');val('buffer',state.buffer/10);$('bedDistance').textContent=(report.bedDistance/10).toFixed(1)+' см';$('checks').replaceChildren();for(const w of report.warnings){const li=document.createElement('li');li.textContent=w;$('checks').append(li)}if(!report.warnings.length){const li=document.createElement('li');li.className='ok';li.textContent='Перевірені перетини не виявлені. Прохід ще не перевірено.';$('checks').append(li)}$('undo').disabled=index<=0;$('redo').disabled=index>=history.length-1;$('snap').checked=state.snap;$('zones').checked=state.zones}
